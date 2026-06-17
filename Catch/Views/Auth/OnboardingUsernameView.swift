@@ -11,14 +11,14 @@ struct OnboardingUsernameView: View {
     enum Status: Equatable { case idle, checking, available, taken, invalid }
 
     private var normalized: String { username.lowercased() }
-    private var formatValid: Bool { normalized.range(of: "^[a-z0-9_]{3,20}$", options: .regularExpression) != nil }
+    private var formatValid: Bool { normalized.range(of: "^[a-z0-9_]{2,20}$", options: .regularExpression) != nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("사용자명을 정해주세요")
                 .font(.title.bold())
                 .foregroundStyle(.white)
-            Text("영문 소문자·숫자·밑줄(_) 3~20자")
+            Text("영문 소문자·숫자·밑줄(_) 2~20자")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.6))
 

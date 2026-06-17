@@ -129,6 +129,12 @@
       "type": "file"
     },
     {
+      "path": "Catch/Views/Auth/OnboardingUsernameView.swift",
+      "accessCount": 3,
+      "lastAccessed": 1781664297291,
+      "type": "file"
+    },
+    {
       "path": "Catch/CatchApp.swift",
       "accessCount": 2,
       "lastAccessed": 1781663894129,
@@ -279,9 +285,9 @@
       "type": "file"
     },
     {
-      "path": "Catch/Views/Auth/OnboardingUsernameView.swift",
+      "path": "supabase/migrations/0006_username_minlen.sql",
       "accessCount": 1,
-      "lastAccessed": 1781663888741,
+      "lastAccessed": 1781664283690,
       "type": "file"
     }
   ],
