@@ -22,11 +22,14 @@ struct FeedCard: View {
                 header
                 CachedCatchImage(path: row.imagePath)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 320)
+                    .frame(height: 300)
                     .padding(20)
-                    .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 20))
+                    .background(Theme.bgBottom.opacity(0.5), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                 footer
             }
+            .padding(16)
+            .background(.white, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .shadow(color: Theme.ink.opacity(0.08), radius: 12, y: 6)
             .padding(.horizontal, 16)
         }
     }
@@ -36,12 +39,12 @@ struct FeedCard: View {
             NavigationLink(value: row.ownerId) {
                 HStack(spacing: 10) {
                     Image(systemName: "person.crop.circle.fill")
-                        .font(.system(size: 30)).foregroundStyle(.white.opacity(0.8))
+                        .font(.system(size: 30)).foregroundStyle(Theme.grape)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(row.displayName ?? "Catch 사용자")
-                            .font(.subheadline.bold()).foregroundStyle(.white)
+                            .font(.subheadline.bold()).foregroundStyle(Theme.ink)
                         Text("@\(row.username ?? "")")
-                            .font(.caption).foregroundStyle(.white.opacity(0.5))
+                            .font(.caption).foregroundStyle(Theme.ink.opacity(0.45))
                     }
                 }
             }
@@ -54,7 +57,7 @@ struct FeedCard: View {
                     Task { await ModerationRepository.shared.block(row.ownerId); hidden = true }
                 } label: { Label("이 사용자 차단", systemImage: "hand.raised") }
             } label: {
-                Image(systemName: "ellipsis").foregroundStyle(.white.opacity(0.6)).padding(8)
+                Image(systemName: "ellipsis").foregroundStyle(Theme.ink.opacity(0.4)).padding(8)
             }
         }
     }
@@ -65,8 +68,10 @@ struct FeedCard: View {
                 Task { await toggleLike() }
             } label: {
                 Image(systemName: liked ? "heart.fill" : "heart")
-                    .foregroundStyle(liked ? .red : .white.opacity(0.8))
-                Text("\(likeCount)").foregroundStyle(.white.opacity(0.7)).font(.subheadline)
+                    .foregroundStyle(liked ? Theme.coral : Theme.ink.opacity(0.5))
+                    .scaleEffect(liked ? 1.1 : 1)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.5), value: liked)
+                Text("\(likeCount)").foregroundStyle(Theme.ink.opacity(0.6)).font(.subheadline.weight(.semibold))
             }
             Spacer()
         }

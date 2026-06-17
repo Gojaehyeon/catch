@@ -81,14 +81,13 @@ struct HomeView: View {
                 .ignoresSafeArea()
 
             if holder.isLoading {
-                ProgressView().tint(.white)
+                ProgressView().tint(Theme.coral)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if holder.isEmpty {
                 VStack(spacing: 8) {
-                    Image(systemName: "hand.raised.fingers.spread")
-                        .font(.system(size: 40)).foregroundStyle(.white.opacity(0.5))
-                    Text("무언가를 찍어 스티커로 모아보세요")
-                        .foregroundStyle(.white.opacity(0.5))
+                    Text("🫙").font(.system(size: 52))
+                    Text("무언가를 찍어 모아보세요!")
+                        .font(.headline).foregroundStyle(Theme.ink.opacity(0.6))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .allowsHitTesting(false)
@@ -98,16 +97,16 @@ struct HomeView: View {
             VStack {
                 HStack {
                     Button { showSettings = true } label: {
-                        Image(systemName: "person.crop.circle")
+                        Image(systemName: "person.crop.circle.fill")
                             .font(.system(size: 30))
-                            .foregroundStyle(.white.opacity(0.9))
+                            .foregroundStyle(Theme.ink.opacity(0.8))
                             .padding(12)
                     }
                     Spacer()
                     Button { showSearch = true } label: {
                         Image(systemName: "magnifyingglass")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.9))
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(Theme.ink.opacity(0.8))
                             .padding(14)
                     }
                 }
@@ -117,9 +116,9 @@ struct HomeView: View {
                         countItem("팔로워", c.followers)
                         countItem("팔로잉", c.following)
                     }
-                    .padding(.vertical, 8).padding(.horizontal, 18)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .environment(\.colorScheme, .dark)
+                    .padding(.vertical, 8).padding(.horizontal, 20)
+                    .background(.white, in: Capsule())
+                    .shadow(color: Theme.ink.opacity(0.08), radius: 6, y: 3)
                 }
 
                 folderBar
@@ -131,12 +130,8 @@ struct HomeView: View {
             // 우측 하단 카메라
             Button { showCamera = true } label: {
                 Image(systemName: "camera.fill")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(.black)
-                    .frame(width: 52, height: 52)
-                    .background(.white, in: Circle())
-                    .shadow(color: .black.opacity(0.35), radius: 8)
             }
+            .buttonStyle(CuteIconButtonStyle(bg: Theme.coral, fg: .white, size: 62))
             .padding(.trailing, 20)
             .padding(.bottom, 40)
         }
@@ -183,9 +178,10 @@ struct HomeView: View {
                 Button { showFolders = true } label: {
                     Image(systemName: "folder.badge.gearshape")
                         .font(.footnote.bold())
-                        .foregroundStyle(.white.opacity(0.8))
-                        .padding(.horizontal, 12).frame(height: 30)
-                        .background(.white.opacity(0.1), in: Capsule())
+                        .foregroundStyle(Theme.grape)
+                        .padding(.horizontal, 14).frame(height: 32)
+                        .background(.white, in: Capsule())
+                        .shadow(color: Theme.ink.opacity(0.06), radius: 4, y: 2)
                 }
             }
             .padding(.horizontal, 16)
@@ -195,17 +191,18 @@ struct HomeView: View {
     private func chip(_ title: String, selected: Bool, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.footnote.weight(selected ? .bold : .regular))
-                .foregroundStyle(selected ? .black : .white.opacity(0.85))
-                .padding(.horizontal, 14).frame(height: 30)
-                .background(selected ? Color.white : Color.white.opacity(0.1), in: Capsule())
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(selected ? .white : Theme.ink.opacity(0.7))
+                .padding(.horizontal, 16).frame(height: 32)
+                .background(selected ? Theme.coral : .white, in: Capsule())
+                .shadow(color: Theme.ink.opacity(0.06), radius: 4, y: 2)
         }
     }
 
     private func countItem(_ label: String, _ value: Int) -> some View {
         VStack(spacing: 1) {
-            Text("\(value)").font(.subheadline.bold()).foregroundStyle(.white)
-            Text(label).font(.caption2).foregroundStyle(.white.opacity(0.6))
+            Text("\(value)").font(.subheadline.bold()).foregroundStyle(Theme.ink)
+            Text(label).font(.caption2.weight(.medium)).foregroundStyle(Theme.ink.opacity(0.5))
         }
     }
 }

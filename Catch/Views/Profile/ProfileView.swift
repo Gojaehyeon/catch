@@ -48,9 +48,9 @@ struct ProfileView: View {
     private var header: some View {
         VStack(spacing: 12) {
             Text(profile?.displayName ?? " ")
-                .font(.headline).foregroundStyle(.white)
+                .font(.headline).foregroundStyle(Theme.ink)
             Text("@\(profile?.username ?? "")")
-                .font(.subheadline).foregroundStyle(.white.opacity(0.6))
+                .font(.subheadline).foregroundStyle(Theme.ink.opacity(0.55))
 
             HStack(spacing: 28) {
                 stat("수집", counts?.collections)
@@ -62,27 +62,27 @@ struct ProfileView: View {
                 Button {
                     Task { await toggleFollow() }
                 } label: {
-                    Text(following ? "팔로잉" : "팔로우")
+                    Text(following ? "팔로잉 ✓" : "팔로우")
                         .font(.subheadline.bold())
-                        .foregroundStyle(following ? .white : .black)
-                        .frame(width: 120, height: 36)
-                        .background(following ? Color.white.opacity(0.15) : Color.white,
-                                    in: Capsule())
+                        .foregroundStyle(following ? Theme.ink.opacity(0.6) : .white)
+                        .frame(width: 130, height: 38)
+                        .background(following ? Color.white : Theme.coral, in: Capsule())
+                        .shadow(color: (following ? Theme.ink : Theme.coral).opacity(0.25), radius: 6, y: 3)
                 }
                 .disabled(working)
             }
         }
-        .padding(.vertical, 14)
+        .padding(.vertical, 16)
         .frame(maxWidth: .infinity)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
-        .environment(\.colorScheme, .dark)
+        .background(.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: Theme.ink.opacity(0.08), radius: 10, y: 5)
     }
 
     private func stat(_ label: String, _ value: Int?) -> some View {
         VStack(spacing: 2) {
             Text(value.map(String.init) ?? "—")
-                .font(.headline).foregroundStyle(.white)
-            Text(label).font(.caption).foregroundStyle(.white.opacity(0.6))
+                .font(.headline).foregroundStyle(Theme.ink)
+            Text(label).font(.caption.weight(.medium)).foregroundStyle(Theme.ink.opacity(0.5))
         }
     }
 

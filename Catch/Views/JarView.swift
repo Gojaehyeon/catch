@@ -37,10 +37,11 @@ struct JarView: View {
             SpriteView(scene: holder.scene, options: [.ignoresSiblingOrder])
                 .ignoresSafeArea()
             if holder.isLoading {
-                ProgressView().tint(.white)
+                ProgressView().tint(Theme.coral)
             } else if holder.isEmpty {
-                Text("아직 수집이 없어요")
-                    .foregroundStyle(.white.opacity(0.5))
+                Text("아직 수집이 없어요 🫧")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Theme.ink.opacity(0.5))
             }
         }
         .task { await holder.load(load) }

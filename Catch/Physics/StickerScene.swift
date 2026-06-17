@@ -27,10 +27,13 @@ final class StickerScene: SKScene {
     private let longPressDuration: TimeInterval = 0.5
     private let dragThreshold: CGFloat = 12
 
+    private var bgNode: SKSpriteNode?
+
     override func didMove(to view: SKView) {
-        backgroundColor = SKColor(white: 0.06, alpha: 1)
+        backgroundColor = Theme.sceneTop
         scaleMode = .resizeFill
         anchorPoint = .zero
+        rebuildBackground()
         rebuildWalls()
         physicsWorld.gravity = CGVector(dx: 0, dy: -9.8)
 
@@ -47,7 +50,28 @@ final class StickerScene: SKScene {
 
     override func didChangeSize(_ oldSize: CGSize) {
         super.didChangeSize(oldSize)
+        rebuildBackground()
         rebuildWalls()
+    }
+
+    private func rebuildBackground() {
+        guard size.width > 1, size.height > 1 else { return }
+        bgNode?.removeFromParent()
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let image = renderer.image { ctx in
+            let cg = ctx.cgContext
+            let colors = [Theme.sceneTop.cgColor, Theme.sceneBottom.cgColor] as CFArray
+            guard let grad = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                        colors: colors, locations: [0, 1]) else { return }
+            cg.drawLinearGradient(grad, start: CGPoint(x: 0, y: 0),
+                                  end: CGPoint(x: 0, y: size.height), options: [])
+        }
+        let node = SKSpriteNode(texture: SKTexture(image: image))
+        node.anchorPoint = .zero
+        node.position = .zero
+        node.zPosition = -10
+        addChild(node)
+        bgNode = node
     }
 
     private func rebuildWalls() {

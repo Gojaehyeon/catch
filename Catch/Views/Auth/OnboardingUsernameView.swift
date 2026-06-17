@@ -14,25 +14,26 @@ struct OnboardingUsernameView: View {
     private var formatValid: Bool { normalized.range(of: "^[a-z0-9_]{2,20}$", options: .regularExpression) != nil }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("사용자명을 정해주세요")
-                .font(.title.bold())
-                .foregroundStyle(.white)
+        VStack(alignment: .leading, spacing: 18) {
+            Text("이름을 정해요 🐣")
+                .font(.system(size: 30, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.ink)
             Text("영문 소문자·숫자·밑줄(_) 2~20자")
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.6))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.ink.opacity(0.5))
 
             HStack(spacing: 6) {
-                Text("@").foregroundStyle(.white.opacity(0.5))
-                TextField("", text: $username, prompt: Text("username").foregroundColor(.white.opacity(0.3)))
+                Text("@").foregroundStyle(Theme.coral).fontWeight(.bold)
+                TextField("", text: $username, prompt: Text("username").foregroundColor(Theme.ink.opacity(0.3)))
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.ink)
                     .onChange(of: username) { _, _ in scheduleCheck() }
                 statusIcon
             }
-            .padding(.horizontal, 16).frame(height: 52)
-            .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, 18).frame(height: 56)
+            .background(.white, in: Capsule())
+            .overlay(Capsule().stroke(borderColor, lineWidth: 2))
 
             statusText
 
@@ -40,39 +41,42 @@ struct OnboardingUsernameView: View {
 
             Button {
                 saving = true
-                Task {
-                    _ = await auth.setUsername(normalized)
-                    saving = false
-                }
+                Task { _ = await auth.setUsername(normalized); saving = false }
             } label: {
-                Text("시작하기").font(.headline).foregroundStyle(.black)
-                    .frame(maxWidth: .infinity).frame(height: 54)
-                    .background(canSubmit ? Color.white : Color.white.opacity(0.3),
-                                in: RoundedRectangle(cornerRadius: 14))
+                Text(saving ? "만드는 중…" : "시작하기")
             }
+            .buttonStyle(CuteButtonStyle(bg: canSubmit ? Theme.coral : Theme.ink.opacity(0.2)))
             .disabled(!canSubmit || saving)
         }
         .padding(28)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color.black.ignoresSafeArea())
+        .background(Theme.background.ignoresSafeArea())
     }
 
     private var canSubmit: Bool { status == .available && !saving }
 
+    private var borderColor: Color {
+        switch status {
+        case .available: return Theme.mint
+        case .taken, .invalid: return Theme.coral
+        default: return .clear
+        }
+    }
+
     @ViewBuilder private var statusIcon: some View {
         switch status {
-        case .checking: ProgressView().tint(.white)
-        case .available: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-        case .taken, .invalid: Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
+        case .checking: ProgressView().tint(Theme.coral)
+        case .available: Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.mint)
+        case .taken, .invalid: Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.coral)
         case .idle: EmptyView()
         }
     }
 
     @ViewBuilder private var statusText: some View {
         switch status {
-        case .invalid: Text("형식이 올바르지 않아요").foregroundStyle(.red).font(.caption)
-        case .taken: Text("이미 사용 중이거나 사용할 수 없어요").foregroundStyle(.red).font(.caption)
-        case .available: Text("사용 가능해요").foregroundStyle(.green).font(.caption)
+        case .invalid: Text("형식이 올바르지 않아요").foregroundStyle(Theme.coral).font(.caption.weight(.medium))
+        case .taken: Text("이미 사용 중이에요 🥲").foregroundStyle(Theme.coral).font(.caption.weight(.medium))
+        case .available: Text("사용할 수 있어요! 🎉").foregroundStyle(Theme.mint).font(.caption.weight(.bold))
         default: EmptyView()
         }
     }

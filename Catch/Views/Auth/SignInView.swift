@@ -3,20 +3,29 @@ import SwiftUI
 struct SignInView: View {
     @EnvironmentObject private var auth: AuthService
     @State private var working = false
+    @State private var bounce = false
 
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
-            Image(systemName: "hand.raised.fingers.spread.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.white)
+
+            ZStack {
+                Circle().fill(Theme.coral.opacity(0.18)).frame(width: 160, height: 160)
+                Text("🫳")
+                    .font(.system(size: 86))
+                    .rotationEffect(.degrees(bounce ? -8 : 8))
+                    .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: bounce)
+            }
+
             Text("Catch")
-                .font(.system(size: 44, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white)
-            Text("잡은 사물을 모으고, 나누고, 발견하세요")
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.6))
+                .font(.system(size: 52, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.ink)
                 .padding(.top, 8)
+            Text("잡은 사물을 모으고, 나누고, 발견해요 ✨")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.ink.opacity(0.55))
+                .padding(.top, 6)
+
             Spacer()
 
             Button {
@@ -25,28 +34,24 @@ struct SignInView: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "apple.logo")
-                    Text("Apple로 계속하기").fontWeight(.semibold)
+                    Text("Apple로 시작하기").fontWeight(.bold)
                 }
-                .font(.headline)
-                .foregroundStyle(.black)
-                .frame(maxWidth: .infinity)
-                .frame(height: 54)
-                .background(.white, in: RoundedRectangle(cornerRadius: 14))
             }
+            .buttonStyle(CuteButtonStyle(bg: Theme.ink, fg: .white))
             .disabled(working)
             .padding(.horizontal, 28)
-            .padding(.bottom, 12)
 
-            Text("계속하면 서비스 약관 및 개인정보 처리방침에 동의합니다.")
+            Text("계속하면 약관 및 개인정보 처리방침에 동의해요")
                 .font(.caption2)
-                .foregroundStyle(.white.opacity(0.4))
+                .foregroundStyle(Theme.ink.opacity(0.4))
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-                .padding(.bottom, 32)
+                .padding(.top, 14)
+                .padding(.bottom, 36)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.ignoresSafeArea())
-        .overlay { if working { ProgressView().tint(.white) } }
+        .background(Theme.background.ignoresSafeArea())
+        .overlay { if working { ProgressView().tint(Theme.coral) } }
+        .onAppear { bounce = true }
         .alert("안내", isPresented: Binding(
             get: { auth.errorMessage != nil },
             set: { if !$0 { auth.errorMessage = nil } }

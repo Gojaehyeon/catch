@@ -21,15 +21,15 @@ struct FeedView: View {
                                 FeedCard(row: row)
                                     .onAppear { maybeLoadMore(row) }
                             }
-                            if loading { ProgressView().tint(.white).padding() }
+                            if loading { ProgressView().tint(Theme.coral).padding() }
                         }
                         .padding(.vertical, 12)
                     }
                     .refreshable { await reload() }
                 }
             }
-            .background(Color.black.ignoresSafeArea())
-            .navigationTitle("피드")
+            .background(Theme.background.ignoresSafeArea())
+            .navigationTitle("피드 🍓")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -37,7 +37,6 @@ struct FeedView: View {
                 }
             }
             .navigationDestination(for: UUID.self) { ProfileView(userId: $0) }
-            .toolbarColorScheme(.dark, for: .navigationBar)
         }
         .task { if !didLoad { await reload() } }
         .sheet(isPresented: $showSearch) { UserSearchView() }
@@ -45,18 +44,18 @@ struct FeedView: View {
 
     private var emptyState: some View {
         VStack(spacing: 10) {
-            Image(systemName: "square.stack.3d.up.slash")
-                .font(.system(size: 44)).foregroundStyle(.white.opacity(0.4))
+            Text("👀").font(.system(size: 52))
             Text("아직 피드가 비어 있어요")
-                .font(.headline).foregroundStyle(.white)
-            Text("사람을 검색해 팔로우하면\n그들의 수집이 여기 모여요")
-                .font(.subheadline).foregroundStyle(.white.opacity(0.5))
+                .font(.headline).foregroundStyle(Theme.ink)
+            Text("친구를 찾아 팔로우하면\n수집이 여기 모여요")
+                .font(.subheadline.weight(.medium)).foregroundStyle(Theme.ink.opacity(0.5))
                 .multilineTextAlignment(.center)
             Button { showSearch = true } label: {
-                Label("사람 찾기", systemImage: "magnifyingglass")
-                    .font(.subheadline.bold()).foregroundStyle(.black)
-                    .padding(.horizontal, 20).frame(height: 44)
-                    .background(.white, in: Capsule())
+                Label("친구 찾기", systemImage: "magnifyingglass")
+                    .font(.subheadline.bold()).foregroundStyle(.white)
+                    .padding(.horizontal, 22).frame(height: 46)
+                    .background(Theme.coral, in: Capsule())
+                    .shadow(color: Theme.coral.opacity(0.4), radius: 8, y: 4)
             }
             .padding(.top, 4)
         }

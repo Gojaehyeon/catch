@@ -6,10 +6,10 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Theme.background.ignoresSafeArea()
             switch auth.state {
             case .loading:
-                ProgressView().tint(.white)
+                ProgressView().tint(Theme.coral)
             case .signedOut:
                 SignInView().environmentObject(auth)
             case .needsUsername:
@@ -18,6 +18,8 @@ struct RootView: View {
                 MainTabView().environmentObject(auth)
             }
         }
+        .fontDesign(.rounded)
+        .tint(Theme.coral)
         .animation(.easeInOut(duration: 0.25), value: auth.state)
     }
 }
