@@ -41,11 +41,14 @@ final class CameraController: NSObject, ObservableObject {
 
     /// 권한 상태에 따라 분기 후 세션 구성.
     func requestAccessAndConfigure() async {
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        let auth = AVCaptureDevice.authorizationStatus(for: .video)
+        NSLog("CATCHCAM requestAccess auth=\(auth.rawValue)")
+        switch auth {
         case .authorized:
             await configure()
         case .notDetermined:
             let granted = await AVCaptureDevice.requestAccess(for: .video)
+            NSLog("CATCHCAM requestAccess granted=\(granted)")
             if granted { await configure() } else { status = .denied }
         default:
             // .denied / .restricted — requestAccess는 다이얼로그를 띄우지 않으므로 설정 유도.
@@ -54,10 +57,12 @@ final class CameraController: NSObject, ObservableObject {
     }
 
     private func configure() async {
+        NSLog("CATCHCAM configure start inputs=\(session.inputs.count)")
         // 이미 구성됐다면(중복 호출) 다시 추가하지 않고 바로 시작.
         if !session.inputs.isEmpty {
             startSession()
             status = .ready
+            NSLog("CATCHCAM configure idempotent → ready")
             return
         }
         status = .configuring
@@ -88,6 +93,7 @@ final class CameraController: NSObject, ObservableObject {
                 cont.resume(returning: true)
             }
         }
+        NSLog("CATCHCAM configure done success=\(success)")
         if success {
             startSession()
             status = .ready
@@ -99,6 +105,7 @@ final class CameraController: NSObject, ObservableObject {
     func startSession() {
         sessionQueue.async {
             if !self.session.isRunning { self.session.startRunning() }
+            NSLog("CATCHCAM startSession isRunning=\(self.session.isRunning)")
         }
     }
 

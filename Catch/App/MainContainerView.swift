@@ -19,6 +19,7 @@ struct MainContainerView: View {
                     page(.camera) {
                         CameraFlowView(
                             camera: camera,
+                            isActive: mode == .camera,
                             capturing: $capturing,
                             onCatch: { c in
                                 Task { await holder.add(c) }
@@ -43,13 +44,6 @@ struct MainContainerView: View {
             .scrollDisabled(mode == .jar || holder.isGrabbing || capturing)
             .scrollIndicators(.hidden)
             .ignoresSafeArea()
-            .onChange(of: mode) { _, m in
-                if m == .camera {
-                    Task { await camera.requestAccessAndConfigure() }
-                } else {
-                    camera.stopSession()   // 메인에선 세션만 정지(상태 유지)
-                }
-            }
 
             // 하단 Liquid Glass 세그먼트
             if !capturing {

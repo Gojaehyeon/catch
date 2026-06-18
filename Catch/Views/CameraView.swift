@@ -9,6 +9,7 @@ struct CameraPreview: UIViewRepresentable {
         let view = PreviewView()
         view.videoPreviewLayer.session = session
         view.videoPreviewLayer.videoGravity = .resizeAspectFill
+        NSLog("CATCHCAM preview makeUIView running=\(session.isRunning) inputs=\(session.inputs.count)")
         return view
     }
 

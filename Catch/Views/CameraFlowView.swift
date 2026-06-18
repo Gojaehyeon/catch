@@ -3,6 +3,7 @@ import SwiftUI
 /// SETLOG 카메라 톤 — 라운드 인셋 프리뷰 + 세로 시계 + 셔터. 촬영 후 스캔 누끼 오버레이.
 struct CameraFlowView: View {
     @ObservedObject var camera: CameraController
+    var isActive: Bool
     @Binding var capturing: Bool
     var onCatch: (CloudCatch) -> Void
     var onClose: () -> Void
@@ -39,6 +40,11 @@ struct CameraFlowView: View {
             if flash { Color.white.ignoresSafeArea().transition(.opacity) }
         }
         .onChange(of: captured == nil) { _, isNil in capturing = !isNil }
+        .task(id: isActive) {
+            // 카메라 페이지가 활성일 때만 세션 구동(메인에선 정지).
+            if isActive { await camera.requestAccessAndConfigure() }
+            else { camera.stopSession() }
+        }
         .alert("안내", isPresented: Binding(
             get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } }
         )) { Button("확인", role: .cancel) {} } message: { Text(errorMessage ?? "") }
@@ -46,23 +52,21 @@ struct CameraFlowView: View {
 
     private var captureView: some View {
         ZStack(alignment: .top) {
-            // 프리뷰 프레임 — 즉시 표시(검정 + 라임 테두리). 라이브 영상만 준비되면 페이드 인.
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.black)
-                .overlay {
-                    // 프리뷰는 항상 트리에 두고(세션 연결 유지) opacity로만 페이드.
-                    CameraPreview(session: camera.session)
-                        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                        .opacity(camera.status == .ready ? 1 : 0)
-                        .animation(.easeInOut(duration: 0.4), value: camera.status)
-                }
-                .overlay(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .strokeBorder(Theme.lime, lineWidth: 2)
-                )
-                .padding(.horizontal, 12)
-                .padding(.top, deviceSafeAreaTop)   // 노치/다이나믹아일랜드 아래로
-                .padding(.bottom, 118)
+            // 프리뷰 프레임 — 검정 배경 + 라이브 영상(준비되면 페이드) + 라임 테두리.
+            ZStack {
+                Color.black
+                CameraPreview(session: camera.session)
+                    .opacity(camera.status == .ready ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.4), value: camera.status)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .strokeBorder(Theme.lime, lineWidth: 2)
+            )
+            .padding(.horizontal, 12)
+            .padding(.top, deviceSafeAreaTop)   // 노치/다이나믹아일랜드 아래로
+            .padding(.bottom, 118)
 
             // 셔터 + 우측 전/후면 플립
             VStack {

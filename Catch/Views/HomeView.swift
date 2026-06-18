@@ -91,14 +91,6 @@ struct HomeView: View {
             if holder.isLoading {
                 CatchLoader()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if holder.isEmpty {
-                VStack(spacing: 8) {
-                    Text("🫙").font(.system(size: 52))
-                    Text("아래 카메라로 무언가 찍어보세요")
-                        .font(.subheadline).foregroundStyle(Theme.muted)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .allowsHitTesting(false)
             }
 
             VStack(spacing: 10) {
