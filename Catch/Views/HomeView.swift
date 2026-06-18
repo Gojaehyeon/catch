@@ -101,8 +101,11 @@ struct HomeView: View {
                 .allowsHitTesting(false)
             }
 
-            folderBar
-                .padding(.top, 60)
+            VStack(spacing: 10) {
+                topBar
+                folderBar
+            }
+            .padding(.top, 8)
         }
         .task {
             await holder.loadMineIfNeeded()
@@ -131,15 +134,30 @@ struct HomeView: View {
                         Task { await holder.reload(folderId: f.id) }
                     }
                 }
-                Button { showFolders = true } label: {
-                    Image(systemName: "folder.badge.gearshape")
-                        .font(.footnote.bold()).foregroundStyle(Theme.muted)
-                        .padding(.horizontal, 14).frame(height: 32)
-                        .background(Theme.surface, in: Capsule())
-                }
             }
             .padding(.horizontal, 16)
         }
+    }
+
+    private var topBar: some View {
+        HStack {
+            if UIImage(named: "CatchLogo") != nil {
+                Image("CatchLogo").resizable().scaledToFit().frame(height: 26)
+            } else {
+                Text("catch").font(.system(size: 24, weight: .heavy)).foregroundStyle(Theme.lime)
+            }
+            Spacer()
+            Menu {
+                Button { showFolders = true } label: { Label("폴더 관리", systemImage: "folder") }
+            } label: {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .liquidGlass(Circle(), interactive: true)
+            }
+        }
+        .padding(.horizontal, 18)
     }
 
     private func chip(_ title: String, selected: Bool, _ action: @escaping () -> Void) -> some View {

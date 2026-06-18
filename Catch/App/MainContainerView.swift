@@ -48,12 +48,6 @@ struct MainContainerView: View {
                 else { camera.stopSession() }
             }
 
-            // 상단 로고 바 (jar 모드)
-            if mode == .jar && !capturing {
-                VStack { topBar; Spacer() }
-                    .transition(.opacity)
-            }
-
             // 하단 Liquid Glass 바
             if !capturing {
                 SetlogBottomBar(
@@ -86,18 +80,5 @@ struct MainContainerView: View {
 
     private func goTo(_ m: CatchMode) {
         withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) { mode = m }
-    }
-
-    private var topBar: some View {
-        HStack {
-            if UIImage(named: "CatchLogo") != nil {
-                Image("CatchLogo").resizable().scaledToFit().frame(height: 26)
-            } else {
-                Text("catch").font(.system(size: 24, weight: .heavy)).foregroundStyle(Theme.lime)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, 10)
     }
 }
