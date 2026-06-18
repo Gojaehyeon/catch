@@ -124,20 +124,20 @@
   "hotPaths": [
     {
       "path": "Catch/Views/HomeView.swift",
-      "accessCount": 26,
-      "lastAccessed": 1781764184232,
+      "accessCount": 31,
+      "lastAccessed": 1781771553393,
       "type": "file"
     },
     {
       "path": "Catch/Physics/StickerScene.swift",
-      "accessCount": 9,
-      "lastAccessed": 1781671427477,
+      "accessCount": 12,
+      "lastAccessed": 1781771453313,
       "type": "file"
     },
     {
       "path": "Catch/Views/CameraFlowView.swift",
-      "accessCount": 9,
-      "lastAccessed": 1781770360990,
+      "accessCount": 11,
+      "lastAccessed": 1781771352432,
       "type": "file"
     },
     {
@@ -171,15 +171,21 @@
       "type": "file"
     },
     {
-      "path": "project.yml",
-      "accessCount": 4,
-      "lastAccessed": 1781664135981,
+      "path": "Catch/Services/CatchRepository.swift",
+      "accessCount": 5,
+      "lastAccessed": 1781771248828,
       "type": "file"
     },
     {
-      "path": "Catch/Services/CatchRepository.swift",
+      "path": "Catch/App/MainContainerView.swift",
+      "accessCount": 5,
+      "lastAccessed": 1781771589408,
+      "type": "file"
+    },
+    {
+      "path": "project.yml",
       "accessCount": 4,
-      "lastAccessed": 1781671090030,
+      "lastAccessed": 1781664135981,
       "type": "file"
     },
     {
@@ -201,15 +207,9 @@
       "type": "file"
     },
     {
-      "path": "Catch/App/MainContainerView.swift",
-      "accessCount": 4,
-      "lastAccessed": 1781770369508,
-      "type": "file"
-    },
-    {
       "path": "Catch/Views/SetlogBar.swift",
-      "accessCount": 3,
-      "lastAccessed": 1781769658283,
+      "accessCount": 4,
+      "lastAccessed": 1781771520268,
       "type": "file"
     },
     {
@@ -222,6 +222,18 @@
       "path": "Catch/Views/JarView.swift",
       "accessCount": 2,
       "lastAccessed": 1781671627147,
+      "type": "file"
+    },
+    {
+      "path": "Catch/Models/CloudCatch.swift",
+      "accessCount": 2,
+      "lastAccessed": 1781771256360,
+      "type": "file"
+    },
+    {
+      "path": "Catch/Utils/ImageUtils.swift",
+      "accessCount": 2,
+      "lastAccessed": 1781771415532,
       "type": "file"
     },
     {
@@ -264,12 +276,6 @@
       "path": "Catch/Services/MotionService.swift",
       "accessCount": 1,
       "lastAccessed": 1781662610050,
-      "type": "file"
-    },
-    {
-      "path": "Catch/Utils/ImageUtils.swift",
-      "accessCount": 1,
-      "lastAccessed": 1781662610460,
       "type": "file"
     },
     {
@@ -339,12 +345,6 @@
       "type": "file"
     },
     {
-      "path": "Catch/Models/CloudCatch.swift",
-      "accessCount": 1,
-      "lastAccessed": 1781664532928,
-      "type": "file"
-    },
-    {
       "path": "Catch/Views/SettingsView.swift",
       "accessCount": 1,
       "lastAccessed": 1781664678671,
@@ -408,6 +408,18 @@
       "path": "Catch/Views/Folder/FoldersView.swift",
       "accessCount": 1,
       "lastAccessed": 1781670887982,
+      "type": "file"
+    },
+    {
+      "path": "Catch/Views/CatchLoader.swift",
+      "accessCount": 1,
+      "lastAccessed": 1781771297744,
+      "type": "file"
+    },
+    {
+      "path": "Catch/Views/Profile/ProfilePageView.swift",
+      "accessCount": 1,
+      "lastAccessed": 1781771582580,
       "type": "file"
     }
   ],

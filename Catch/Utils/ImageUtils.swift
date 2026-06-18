@@ -43,6 +43,41 @@ extension UIImage {
         return UIImage(cgImage: cropped, scale: scale, orientation: .up)
     }
 
+    /// 알파를 유지한 채 단색으로 칠한 실루엣.
+    func tinted(_ color: UIColor) -> UIImage {
+        guard let mask = cgImage else { return self }
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = scale; format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        return renderer.image { ctx in
+            let cg = ctx.cgContext
+            cg.translateBy(x: 0, y: size.height)
+            cg.scaleBy(x: 1, y: -1)
+            let rect = CGRect(origin: .zero, size: size)
+            cg.clip(to: rect, mask: mask)
+            color.setFill()
+            cg.fill(rect)
+        }
+    }
+
+    /// 누끼 둘레에 스티커 테두리(림)를 두른다. width = px.
+    func stickerBordered(color: UIColor, width: CGFloat, steps: Int = 18) -> UIImage {
+        let pad = width + 1
+        let newSize = CGSize(width: size.width + pad * 2, height: size.height + pad * 2)
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = scale; format.opaque = false
+        let silhouette = tinted(color)
+        let center = CGRect(x: pad, y: pad, width: size.width, height: size.height)
+        let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
+        return renderer.image { _ in
+            for i in 0..<steps {
+                let a = CGFloat(i) / CGFloat(steps) * 2 * .pi
+                silhouette.draw(in: center.offsetBy(dx: cos(a) * width, dy: sin(a) * width))
+            }
+            draw(in: center)
+        }
+    }
+
     /// 긴 변이 maxDimension(pt) 이하가 되도록 비율 유지 리사이즈. 이미 작으면 그대로 반환.
     func resized(maxDimension: CGFloat) -> UIImage {
         let longest = max(size.width, size.height)

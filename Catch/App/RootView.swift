@@ -9,7 +9,7 @@ struct RootView: View {
             Theme.background.ignoresSafeArea()
             switch auth.state {
             case .loading:
-                ProgressView().tint(Theme.coral)
+                CatchLoader()
             case .signedOut:
                 SignInView().environmentObject(auth)
             case .needsUsername:

@@ -21,7 +21,7 @@ struct FeedView: View {
                                 FeedCard(row: row)
                                     .onAppear { maybeLoadMore(row) }
                             }
-                            if loading { ProgressView().tint(Theme.coral).padding() }
+                            if loading { CatchLoader().padding() }
                         }
                         .padding(.vertical, 12)
                     }

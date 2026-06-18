@@ -12,7 +12,7 @@ struct CachedCatchImage: View {
             } else {
                 ZStack {
                     Rectangle().fill(.white.opacity(0.05))
-                    ProgressView().tint(.white.opacity(0.4))
+                    CatchLoader(size: 6, color: .white.opacity(0.35))
                 }
             }
         }

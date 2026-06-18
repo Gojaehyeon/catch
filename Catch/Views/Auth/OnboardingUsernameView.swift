@@ -69,7 +69,7 @@ struct OnboardingUsernameView: View {
 
     @ViewBuilder private var statusIcon: some View {
         switch status {
-        case .checking: ProgressView().tint(Theme.coral)
+        case .checking: CatchLoader(size: 5)
         case .available: Image(systemName: "checkmark").foregroundStyle(Theme.coral)
         case .taken, .invalid: Image(systemName: "xmark").foregroundStyle(.red)
         case .idle: EmptyView()

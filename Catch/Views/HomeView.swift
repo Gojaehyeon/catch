@@ -71,7 +71,6 @@ struct HomeView: View {
     @EnvironmentObject private var auth: AuthService
     @ObservedObject var holder: SceneHolder
 
-    @State private var counts: ProfileCounts?
     @State private var folders: [Folder] = []
     @State private var selectedFolder: UUID?
     @State private var showFolders = false
@@ -82,7 +81,7 @@ struct HomeView: View {
                 .ignoresSafeArea()
 
             if holder.isLoading {
-                ProgressView().tint(Theme.coral)
+                CatchLoader()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if holder.isEmpty {
                 VStack(spacing: 8) {
@@ -94,23 +93,11 @@ struct HomeView: View {
                 .allowsHitTesting(false)
             }
 
-            VStack(spacing: 10) {
-                if let c = counts {
-                    HStack(spacing: 22) {
-                        countItem("collected", c.collections)
-                        countItem("followers", c.followers)
-                        countItem("following", c.following)
-                    }
-                    .padding(.vertical, 9).padding(.horizontal, 20)
-                    .background(Theme.surface, in: Capsule())
-                }
-                folderBar
-            }
-            .padding(.top, 64)
+            folderBar
+                .padding(.top, 60)
         }
         .task {
             await holder.loadMineIfNeeded()
-            if let id = auth.profile?.id { counts = await ProfileRepository.shared.counts(id) }
             folders = await FolderRepository.shared.listMine()
         }
         .sheet(isPresented: $showFolders) {
@@ -157,10 +144,4 @@ struct HomeView: View {
         }
     }
 
-    private func countItem(_ label: String, _ value: Int) -> some View {
-        VStack(spacing: 2) {
-            Text("\(value)").font(.headline).foregroundStyle(Theme.ink)
-            Text(label).font(.mono(10)).foregroundStyle(Theme.muted)
-        }
-    }
 }

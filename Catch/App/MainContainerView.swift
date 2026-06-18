@@ -32,8 +32,8 @@ struct MainContainerView: View {
                     page(.jar) {
                         HomeView(holder: holder).environmentObject(auth)
                     }
-                    page(.friends) {
-                        FeedView()
+                    page(.profile) {
+                        ProfilePageView().environmentObject(auth)
                     }
                 }
                 .scrollTargetLayout()

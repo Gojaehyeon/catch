@@ -33,15 +33,11 @@ struct CameraFlowView: View {
                 case .denied: deniedView
                 case .failed: failedView
                 case .ready:  captureView
-                default:      ProgressView().tint(Theme.coral)
+                default:      CatchLoader()
                 }
             }
 
             if flash { Color.white.ignoresSafeArea().transition(.opacity) }
-            if saving {
-                Color.black.opacity(0.55).ignoresSafeArea()
-                ProgressView("catching…").tint(.white).foregroundStyle(.white)
-            }
         }
         .onChange(of: captured == nil) { _, isNil in capturing = !isNil }
         .alert("안내", isPresented: Binding(
@@ -164,14 +160,11 @@ struct CameraFlowView: View {
         guard !saving else { return }
         saving = true
         Task {
-            do {
-                let cloud = try await repo.upload(image: image)
-                saving = false
-                onCatch(cloud)
-            } catch {
-                saving = false
-                errorMessage = "저장에 실패했어요. 네트워크를 확인해주세요."
-            }
+            // 로컬에 즉시 저장 → 바로 항아리로(업로드는 백그라운드)
+            let cloud = try? await repo.capture(image: image)
+            saving = false
+            if let cloud { onCatch(cloud) }
+            else { errorMessage = "저장에 실패했어요." }
         }
     }
 }

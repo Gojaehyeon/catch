@@ -13,6 +13,7 @@ final class StickerScene: SKScene {
     var onDeleteCatch: ((UUID) -> Void)?
 
     private let displayMaxDimension: CGFloat = 140
+    static let rimColor = UIColor(hex: 0xE3FB85)   // 테마 라임
 
     // 드래그 상태
     private var draggedNode: SKSpriteNode?
@@ -113,20 +114,28 @@ final class StickerScene: SKScene {
     }
 
     private func addStickerNode(displayImage: UIImage, bodyImage: UIImage, id: UUID) {
-        let texture = SKTexture(image: displayImage)
+        // 누끼 둘레에 테마색(라임) 스티커 테두리.
+        let working = displayImage.resized(maxDimension: 420)
+        let borderW = max(working.size.width, working.size.height) * 0.045
+        let bordered = working.stickerBordered(color: StickerScene.rimColor, width: borderW)
+
+        let texture = SKTexture(image: bordered)
         let node = SKSpriteNode(texture: texture)
         node.name = id.uuidString
 
         // 표시 크기 정규화: 긴 변을 displayMaxDimension 이하로.
-        let longest = max(displayImage.size.width, displayImage.size.height)
+        let longest = max(bordered.size.width, bordered.size.height)
         let scale = longest > 0 ? min(1, displayMaxDimension / longest) : 1
-        let displaySize = CGSize(width: max(1, displayImage.size.width * scale),
-                                 height: max(1, displayImage.size.height * scale))
+        let displaySize = CGSize(width: max(1, bordered.size.width * scale),
+                                 height: max(1, bordered.size.height * scale))
         node.size = displaySize
 
-        // 실루엣 물리 바디(다운스케일 텍스처 기준, 표시 크기로 매핑).
+        // 물리 바디는 테두리를 뺀 내부 실루엣 기준.
+        let innerW = bordered.size.width > 0 ? working.size.width / bordered.size.width : 1
+        let innerH = bordered.size.height > 0 ? working.size.height / bordered.size.height : 1
+        let bodySize = CGSize(width: displaySize.width * innerW, height: displaySize.height * innerH)
         let bodyTexture = SKTexture(image: bodyImage)
-        let body = SKPhysicsBody(texture: bodyTexture, alphaThreshold: 0.5, size: displaySize)
+        let body = SKPhysicsBody(texture: bodyTexture, alphaThreshold: 0.5, size: bodySize)
         body.restitution = 0.1
         body.friction = 0.4
         body.allowsRotation = true

@@ -3,8 +3,8 @@ import Supabase
 
 enum CatchError: Error { case encodingFailed, notAuthed }
 
-/// 캐치 업로드/조회/삭제. 이미지는 Supabase Storage, 메타는 catches 테이블.
-/// 다운로드한 이미지는 로컬 Caches에 캐싱한다.
+/// 로컬-퍼스트 캐치 저장.
+/// 촬영 → 로컬에 즉시 저장하고 바로 항아리에 표시(즐거움 우선) → 백그라운드로 Supabase 동기화.
 @MainActor
 final class CatchRepository {
     static let shared = CatchRepository()
@@ -20,80 +20,106 @@ final class CatchRepository {
         }
         return base
     }
-
     private func cacheURL(_ path: String) -> URL {
         cacheDir.appendingPathComponent(path.replacingOccurrences(of: "/", with: "_"))
     }
 
-    // MARK: - Upload
-    func upload(image: UIImage) async throws -> CloudCatch {
+    // 미동기화(pending) 매니페스트
+    private var pendingURL: URL {
+        fm.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("pending.json")
+    }
+    private func loadPending() -> [CloudCatch] {
+        guard let data = try? Data(contentsOf: pendingURL),
+              let list = try? JSONDecoder().decode([CloudCatch].self, from: data) else { return [] }
+        return list
+    }
+    private func savePending(_ list: [CloudCatch]) {
+        if let data = try? JSONEncoder().encode(list) { try? data.write(to: pendingURL, options: .atomic) }
+    }
+    private func addPending(_ c: CloudCatch) { var l = loadPending(); l.append(c); savePending(l) }
+    private func removePending(_ id: UUID) { savePending(loadPending().filter { $0.id != id }) }
+
+    // MARK: - 로컬 즉시 저장 (촬영 직후)
+    @discardableResult
+    func capture(image: UIImage) async throws -> CloudCatch {
         let uid = try await Supa.client.auth.session.user.id
         let id = UUID()
-        // 스토리지 RLS는 경로의 owner 세그먼트를 auth.uid()::text(소문자)와 대소문자까지 비교하므로 소문자 정규화 필수.
         let uidStr = uid.uuidString.lowercased()
         let idStr = id.uuidString.lowercased()
-        // 방향 정규화(EXIF/GPS 베이크 제거) → 1024 상한 → 투명 여백 트림
-        let normalized = image.orientationNormalized()
-            .resized(maxDimension: 1024)
-            .trimmingTransparentPixels()
+
+        let normalized = image.orientationNormalized().resized(maxDimension: 1024).trimmingTransparentPixels()
         let body = normalized.resized(maxDimension: 256)
-        guard let png = normalized.pngData(), let bodyPng = body.pngData() else {
-            throw CatchError.encodingFailed
-        }
+        guard let png = normalized.pngData(), let bodyPng = body.pngData() else { throw CatchError.encodingFailed }
+
         let imagePath = "catches/\(uidStr)/\(idStr).png"
         let bodyPath = "catches/\(uidStr)/\(idStr)_body.png"
-
-        let opts = FileOptions(contentType: "image/png", upsert: true)
-        try await Supa.client.storage.from(bucket).upload(imagePath, data: png, options: opts)
-        try await Supa.client.storage.from(bucket).upload(bodyPath, data: bodyPng, options: opts)
-
-        let payload = CatchInsert(
-            id: idStr, owner_id: uidStr,
-            image_path: imagePath, body_path: bodyPath,
-            width: Int(normalized.size.width), height: Int(normalized.size.height)
-        )
-        let inserted: CloudCatch = try await Supa.client
-            .from("catches").insert(payload).select().single().execute().value
-
-        // 로컬 캐시
+        // 로컬 캐시에 즉시 기록(표시·오프라인·동기화 소스)
         try? png.write(to: cacheURL(imagePath))
         try? bodyPng.write(to: cacheURL(bodyPath))
-        return inserted
+
+        let cloud = CloudCatch(id: id, ownerId: uid, folderId: nil,
+                               imagePath: imagePath, bodyPath: bodyPath, title: nil, isPublic: true)
+        addPending(cloud)
+        Task { await self.sync(cloud) }   // 백그라운드 업로드
+        return cloud
     }
 
-    // MARK: - Load
+    // MARK: - 백그라운드 동기화
+    private func sync(_ c: CloudCatch) async {
+        guard let png = try? Data(contentsOf: cacheURL(c.imagePath)) else { return }
+        let opts = FileOptions(contentType: "image/png", upsert: true)
+        do {
+            try await Supa.client.storage.from(bucket).upload(c.imagePath, data: png, options: opts)
+            if let bp = c.bodyPath, let bodyPng = try? Data(contentsOf: cacheURL(bp)) {
+                try? await Supa.client.storage.from(bucket).upload(bp, data: bodyPng, options: opts)
+            }
+            let payload = CatchInsert(id: c.id.uuidString.lowercased(),
+                                      owner_id: c.ownerId.uuidString.lowercased(),
+                                      image_path: c.imagePath, body_path: c.bodyPath ?? "")
+            try await Supa.client.from("catches").upsert(payload).execute()
+            removePending(c.id)
+        } catch {
+            // 실패 시 pending 유지 → 다음 실행/로드 때 재시도
+        }
+    }
+
+    func retryPending() async {
+        for c in loadPending() { await sync(c) }
+    }
+
+    // MARK: - Load (클라우드 + 로컬 pending 병합)
     func loadMine(folderId: UUID? = nil) async throws -> [CloudCatch] {
         let uid = try await Supa.client.auth.session.user.id
         let base = Supa.client.from("catches").select().eq("owner_id", value: uid.uuidString)
+        let cloud: [CloudCatch]
         if let folderId {
-            return try await base.eq("folder_id", value: folderId.uuidString)
-                .order("caught_at", ascending: true).execute().value
+            cloud = (try? await base.eq("folder_id", value: folderId.uuidString)
+                .order("caught_at", ascending: true).execute().value) ?? []
+        } else {
+            cloud = (try? await base.order("caught_at", ascending: true).execute().value) ?? []
         }
-        return try await base.order("caught_at", ascending: true).execute().value
+        let cloudIds = Set(cloud.map { $0.id })
+        let pending = loadPending().filter { p in
+            !cloudIds.contains(p.id) && (folderId == nil || p.folderId == folderId)
+        }
+        Task { await retryPending() }
+        return cloud + pending
     }
 
-    /// 다른 유저의 캐치(RLS가 공개·비차단만 반환).
     func loadUser(_ userId: UUID) async throws -> [CloudCatch] {
-        try await Supa.client
-            .from("catches").select()
+        try await Supa.client.from("catches").select()
             .eq("owner_id", value: userId.uuidString)
-            .order("caught_at", ascending: true)
-            .execute().value
+            .order("caught_at", ascending: true).execute().value
     }
 
-    // MARK: - Images (캐시 우선, 없으면 다운로드)
+    // MARK: - Images (로컬 캐시 우선)
     func image(at path: String) async -> UIImage? {
         let url = cacheURL(path)
         if let data = try? Data(contentsOf: url), let img = UIImage(data: data) { return img }
-        do {
-            let data = try await Supa.client.storage.from(bucket).download(path: path)
-            try? data.write(to: url)
-            return UIImage(data: data)
-        } catch {
-            return nil
-        }
+        guard let data = try? await Supa.client.storage.from(bucket).download(path: path) else { return nil }
+        try? data.write(to: url)
+        return UIImage(data: data)
     }
-
     func displayImage(for c: CloudCatch) async -> UIImage? { await image(at: c.imagePath) }
     func bodyImage(for c: CloudCatch) async -> UIImage? {
         if let bp = c.bodyPath, let img = await image(at: bp) { return img }
@@ -102,6 +128,7 @@ final class CatchRepository {
 
     // MARK: - Delete
     func delete(_ c: CloudCatch) async {
+        removePending(c.id)
         try? await Supa.client.from("catches").delete().eq("id", value: c.id.uuidString).execute()
         var paths = [c.imagePath]
         if let bp = c.bodyPath { paths.append(bp) }

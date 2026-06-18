@@ -1,13 +1,13 @@
 import SwiftUI
 
 enum CatchMode: String, CaseIterable {
-    case camera, jar, friends
+    case camera, jar, profile
 
     var label: String {
         switch self {
         case .camera: return "camera"
         case .jar: return "jar"
-        case .friends: return "friends"
+        case .profile: return "profile"
         }
     }
 }

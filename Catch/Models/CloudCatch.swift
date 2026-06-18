@@ -20,12 +20,10 @@ struct CloudCatch: Codable, Identifiable, Equatable {
     }
 }
 
-/// 캐치 insert payload
+/// 캐치 upsert payload
 struct CatchInsert: Encodable {
     let id: String
     let owner_id: String
     let image_path: String
     let body_path: String
-    let width: Int
-    let height: Int
 }

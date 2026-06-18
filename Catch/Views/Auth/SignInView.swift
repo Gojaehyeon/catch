@@ -48,7 +48,7 @@ struct SignInView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.ignoresSafeArea())
-        .overlay { if working { ProgressView().tint(Theme.coral) } }
+        .overlay { if working { CatchLoader() } }
         .alert("안내", isPresented: Binding(
             get: { auth.errorMessage != nil },
             set: { if !$0 { auth.errorMessage = nil } }
