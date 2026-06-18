@@ -37,6 +37,7 @@ struct MainContainerView: View {
                 .scrollTargetLayout()
             }
             .scrollTargetBehavior(.paging)
+            .defaultScrollAnchor(.center)   // 첫 진입을 가운데(jar)로
             .scrollPosition(id: Binding(get: { mode }, set: { if let v = $0 { mode = v } }))
             // jar에선 스와이프 잠금(스티커 드래그 보호). 이동은 세그먼트 탭으로.
             .scrollDisabled(mode == .jar || holder.isGrabbing || capturing)

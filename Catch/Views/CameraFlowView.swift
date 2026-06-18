@@ -33,7 +33,8 @@ struct CameraFlowView: View {
                 case .denied: deniedView
                 case .failed: failedView
                 case .ready:  captureView
-                default:      CatchLoader()
+                case .configuring: CatchLoader()
+                case .unknown: Color.black   // 아직 시작 안 함(다른 탭에 있을 때) → 로더 X
                 }
             }
 
