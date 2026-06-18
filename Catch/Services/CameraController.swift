@@ -43,44 +43,42 @@ final class CameraController: NSObject, ObservableObject {
         }
     }
 
+    /// 메인에서 동기 구성(이게 안정적). 입력·출력 모두 성공해야 .ready.
     private func configure() {
-        guard !configured else { status = .ready; return }
+        guard !configured else { status = .ready; if wantsRunning { startRunning() }; return }
         status = .configuring
-        let session = self.session
-        let output = self.photoOutput
-        let position = self.position
-        queue.async {
-            session.beginConfiguration()
-            session.sessionPreset = .photo
-            session.inputs.forEach { session.removeInput($0) }
-            session.outputs.forEach { session.removeOutput($0) }
+        session.beginConfiguration()
+        session.sessionPreset = .photo
+        session.inputs.forEach { session.removeInput($0) }
+        session.outputs.forEach { session.removeOutput($0) }
 
-            guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position),
-                  let input = try? AVCaptureDeviceInput(device: device),
-                  session.canAddInput(input),
-                  session.canAddOutput(output) else {
-                session.commitConfiguration()
-                Task { @MainActor in self.status = .failed }
-                return
-            }
-            session.addInput(input)
-            session.addOutput(output)
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position),
+              let input = try? AVCaptureDeviceInput(device: device),
+              session.canAddInput(input), session.canAddOutput(photoOutput) else {
             session.commitConfiguration()
-            Task { @MainActor in
-                self.configured = true
-                self.status = .ready
-            }
+            status = .failed
+            return
         }
+        session.addInput(input)
+        session.addOutput(photoOutput)
+        session.commitConfiguration()
+        configured = true
+        status = .ready
+        if wantsRunning { startRunning() }
     }
 
     // MARK: - 실행 제어
 
+    private var wantsRunning = false
+
     func startRunning() {
+        wantsRunning = true
         let session = self.session
-        queue.async { if !session.isRunning { session.startRunning() } }
+        queue.async { if !session.inputs.isEmpty, !session.isRunning { session.startRunning() } }
     }
 
     func stopRunning() {
+        wantsRunning = false
         let session = self.session
         queue.async { if session.isRunning { session.stopRunning() } }
     }
