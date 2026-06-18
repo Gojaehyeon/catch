@@ -61,15 +61,13 @@ final class CatchRepository {
         let id = UUID()
         let uidStr = uid.uuidString.lowercased()
         let idStr = id.uuidString.lowercased()
-
-        let normalized = image.orientationNormalized().resized(maxDimension: 1024).trimmingTransparentPixels()
-        let body = normalized.resized(maxDimension: 256)
-        guard let png = normalized.pngData(), let bodyPng = body.pngData() else { throw CatchError.encodingFailed }
-
         let imagePath = "catches/\(uidStr)/\(idStr).png"
         let bodyPath = "catches/\(uidStr)/\(idStr)_body.png"
-        try? png.write(to: cacheURL(imagePath))
-        try? bodyPng.write(to: cacheURL(bodyPath))
+
+        // 무거운 정규화·트림·PNG 인코딩은 백그라운드에서(메인스레드 블로킹 → 촬영 멈칫 방지).
+        let encoded = try await Self.encode(image)
+        try? encoded.full.write(to: cacheURL(imagePath))
+        try? encoded.body.write(to: cacheURL(bodyPath))
 
         let cloud = CloudCatch(id: id, ownerId: uid, folderId: nil,
                                imagePath: imagePath, bodyPath: bodyPath, title: nil, isPublic: true)
@@ -78,6 +76,18 @@ final class CatchRepository {
         saveLocal(local)
         Task { await self.sync(cloud) }
         return cloud
+    }
+
+    /// 표시용/물리 바디용 PNG를 백그라운드에서 인코딩한다.
+    private static func encode(_ image: UIImage) async throws -> (full: Data, body: Data) {
+        try await Task.detached(priority: .userInitiated) {
+            let normalized = image.orientationNormalized().resized(maxDimension: 1024).trimmingTransparentPixels()
+            let body = normalized.resized(maxDimension: 256)
+            guard let png = normalized.pngData(), let bodyPng = body.pngData() else {
+                throw CatchError.encodingFailed
+            }
+            return (png, bodyPng)
+        }.value
     }
 
     // MARK: - 백그라운드 업로드
@@ -95,7 +105,8 @@ final class CatchRepository {
             try await Supa.client.from("catches").upsert(payload).execute()
             markSynced(c.id)
         } catch {
-            // 실패 시 unsynced 유지 → refresh 때 재시도
+            // 실패 시 unsynced 유지 → refresh 때 재시도. 무음 대신 로깅으로 진단 가능하게.
+            Log.sync.error("catch \(c.id, privacy: .public) upload failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

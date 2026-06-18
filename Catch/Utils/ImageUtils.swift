@@ -1,6 +1,9 @@
 import UIKit
 import CoreImage
 
+/// 공유 CIContext — 호출마다 새로 만들면(전형적 성능 함정) 스티커 생성이 느려진다.
+private let sharedCIContext = CIContext()
+
 extension UIImage {
     /// 알파 가장자리를 부드럽게(블러 후 다시 샤프닝) — 누끼가 울퉁불퉁해도 외곽선이 깔끔.
     func alphaSmoothed(blur: CGFloat) -> UIImage {
@@ -15,8 +18,7 @@ extension UIImage {
             "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 6),
             "inputBiasVector": CIVector(x: 0, y: 0, z: 0, w: -2.5)
         ])
-        let ctx = CIContext(options: nil)
-        guard let out = ctx.createCGImage(sharp, from: extent) else { return self }
+        guard let out = sharedCIContext.createCGImage(sharp, from: extent) else { return self }
         return UIImage(cgImage: out, scale: scale, orientation: .up)
     }
 
@@ -96,6 +98,14 @@ extension UIImage {
             }
             draw(in: center)
         }
+    }
+
+    /// 스티커 표시용으로 누끼에 흰색 테두리(림)를 두른다(스캔 완료·물리 씬·포커스 프리뷰 공통).
+    /// - Returns: `working`(테두리 전, 물리 바디 비율 계산용)과 `bordered`(표시용).
+    func whiteStickerBordered() -> (working: UIImage, bordered: UIImage) {
+        let working = resized(maxDimension: 420)
+        let borderW = max(working.size.width, working.size.height) * 0.045
+        return (working, working.stickerBordered(color: .white, width: borderW))
     }
 
     /// 긴 변이 maxDimension(pt) 이하가 되도록 비율 유지 리사이즈. 이미 작으면 그대로 반환.

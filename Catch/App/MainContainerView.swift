@@ -5,10 +5,13 @@ struct MainContainerView: View {
     @EnvironmentObject private var auth: AuthService
     @StateObject private var holder = SceneHolder()
     @StateObject private var camera = CameraController()
+    // 촬영 플로우 상태는 컨테이너가 소유 — 페이저 자식 뷰 갱신이 막히지 않도록.
+    @StateObject private var flow = CameraFlowModel()
 
     // 스크롤 위치 = 단일 진실원천(표준 옵셔널 바인딩).
     @State private var page: CatchMode? = .jar
-    @State private var capturing = false
+
+    private var capturing: Bool { flow.isCapturing }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -18,15 +21,7 @@ struct MainContainerView: View {
             ScrollView(.horizontal) {
                 HStack(spacing: 0) {
                     pageView(.camera) {
-                        CameraFlowView(
-                            camera: camera,
-                            capturing: $capturing,
-                            onCatch: { c in
-                                Task { await holder.add(c) }
-                                goTo(.jar)
-                            },
-                            onClose: { goTo(.jar) }
-                        )
+                        CameraFlowView(camera: camera, flow: flow, onClose: { goTo(.jar) })
                     }
                     pageView(.jar) {
                         HomeView(holder: holder).environmentObject(auth)
@@ -52,11 +47,37 @@ struct MainContainerView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        // ⚠️ 불변식: 촬영 결과 스캔/누끼(ScanRevealView)는 반드시 여기 — 컨테이너 레벨 — 에서 그린다.
+        // 가로 페이저(ScrollView+paging)의 자식 페이지(CameraFlowView)는 한 번 렌더된 뒤
+        // 관찰 상태(flow.captured) 변경에 body를 다시 그리지 않아, 페이지 안에 넣으면 화면이 안 바뀐다.
+        // (셔터→스캔 전환이 안 되던 버그의 근본 원인. 절대 CameraFlowView 안으로 되돌리지 말 것.)
+        .overlay {
+            if let captured = flow.captured {
+                ScanRevealView(
+                    original: captured,
+                    cutout: flow.cutout,
+                    onCatch: { image in
+                        flow.catchSticker(image) { c in
+                            Task { await holder.add(c) }
+                            goTo(.jar)
+                        }
+                    },
+                    onRetake: { flow.reset() }
+                )
+                .ignoresSafeArea()
+                .transition(.opacity)
+            }
+            if flow.flash { Color.white.ignoresSafeArea() }
+        }
+        .animation(.easeInOut(duration: 0.2), value: flow.captured != nil)
         .animation(.spring(response: 0.4, dampingFraction: 0.82), value: page)
         .animation(.easeInOut(duration: 0.25), value: capturing)
-        .onAppear { camera.prepare() }
-        .onChange(of: page) { _, p in
-            if p == .camera { camera.startRunning() } else { camera.stopRunning() }
+        .alert("안내", isPresented: Binding(
+            get: { flow.errorMessage != nil }, set: { if !$0 { flow.errorMessage = nil } }
+        )) { Button("확인", role: .cancel) {} } message: { Text(flow.errorMessage ?? "") }
+        .task { await camera.prepare() }
+        .onChange(of: page, initial: true) { _, p in
+            if p == .camera { camera.startSession() } else { camera.stopSession() }
         }
     }
 

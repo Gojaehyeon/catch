@@ -3,18 +3,15 @@ import UIKit
 
 /// SETLOG 무드 — 다크 + 모노 악센트. 대부분 iOS 기본, 몇 군데만 키치.
 enum Theme {
+    /// 로고 라임 — coral(악센트/CTA)·lime(브랜드 라인·스티커 림)이 공유하는 단일 색.
+    private static let accentHex: UInt = 0xE3FB85
+
     static let ink     = Color.white
     static let muted   = Color(white: 0.55)
-    static let surface = Color(white: 0.13)      // 다크 그레이 pill/카드
-    static let cream   = Color.black             // 베이스 배경(이름 호환)
-    static let coral   = Color(hex: 0xE3FB85)    // 메인 악센트 = 로고 라임(이름 호환)
+    static let surface = Color(white: 0.13)          // 다크 그레이 pill/카드
+    static let coral   = Color(hex: accentHex)        // 메인 악센트(CTA)
+    static let lime    = Color(hex: accentHex)        // 브랜드 라인 / 스티커 림
     static let grape   = Color(hex: 0xC4B0FF)
-    static let mint    = Color(hex: 0xE3FB85)
-    static let butter  = Color(hex: 0xF6E58D)
-    static let lime    = Color(hex: 0xE3FB85)
-
-    static let bgTop    = Color.black
-    static let bgBottom = Color.black
 
     static var background: LinearGradient {
         LinearGradient(colors: [.black, .black], startPoint: .top, endPoint: .bottom)

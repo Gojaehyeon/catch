@@ -76,6 +76,7 @@ final class AuthService: ObservableObject {
             state = p.hasUsername ? .ready : .needsUsername
         } catch {
             // 네트워크 실패: 이미 들어가 있으면(.ready) 유지, 아니면 온보딩
+            Log.auth.error("loadProfile failed: \(error.localizedDescription, privacy: .public)")
             if state != .ready { state = .needsUsername }
         }
     }

@@ -10,21 +10,20 @@ final class SceneHolder: ObservableObject {
     @Published var isLoading = false
     @Published var isEmpty = false
     @Published var isGrabbing = false   // 스티커 드래그 중 → 페이지 스와이프 잠금
-    @Published var gridMode = false     // 그리드 정렬 ↔ 중력
+    @Published var gridMode = false     // 그리드(스크롤 격자) ↔ 물리 항아리
+    @Published private(set) var catches: [CloudCatch] = []   // 그리드 표시용(추가 순서)
     @Published var focused: CloudCatch?       // 탭한 스티커(포커스 프리뷰)
     @Published var focusedImage: UIImage?
 
     func toggleGrid() {
         gridMode.toggle()
-        if gridMode { scene.arrangeGrid() } else { scene.releaseGrid() }
+        scene.isPaused = gridMode   // 그리드 동안 물리 일시정지(스크롤 격자로 대체)
     }
 
     func focus(_ id: UUID) async {
         guard let c = byId[id], let img = await repo.displayImage(for: c) else { return }
-        // 씬과 동일하게 라임 테두리를 입혀서 보여준다.
-        let working = img.resized(maxDimension: 420)
-        let borderW = max(working.size.width, working.size.height) * 0.045
-        focusedImage = working.stickerBordered(color: StickerScene.rimColor, width: borderW)
+        // 씬과 동일하게 흰색 테두리를 입혀서 보여준다.
+        focusedImage = img.whiteStickerBordered().bordered
         focused = c
     }
 
@@ -60,10 +59,12 @@ final class SceneHolder: ObservableObject {
     func reload(folderId: UUID?) async {
         scene.clearAll()
         byId.removeAll()
+        catches.removeAll()
         // 로컬에서 즉시 표시(네트워크 대기 없음)
         let local = repo.localCatches(folderId: folderId)
         isEmpty = local.isEmpty
         isLoading = false
+        catches = local
         for c in local {
             byId[c.id] = c
             try? await Task.sleep(nanoseconds: 70_000_000)
@@ -74,6 +75,7 @@ final class SceneHolder: ObservableObject {
         for c in added where folderId == nil || c.folderId == folderId {
             guard byId[c.id] == nil else { continue }
             byId[c.id] = c
+            catches.append(c)
             await spawn(c)
         }
         if !byId.isEmpty { isEmpty = false }
@@ -81,19 +83,31 @@ final class SceneHolder: ObservableObject {
 
     func add(_ c: CloudCatch) async {
         byId[c.id] = c
+        catches.append(c)
         isEmpty = false
         await spawn(c)
+    }
+
+    /// 그리드에서 개별 삭제(씬 노드 + 데이터 + 서버).
+    func deleteFromGrid(_ id: UUID) async {
+        scene.removeNode(id: id)
+        await remove(id)
     }
 
     private func spawn(_ c: CloudCatch) async {
         guard let display = await repo.displayImage(for: c) else { return }
         let body = await repo.bodyImage(for: c) ?? display
-        scene.addCatch(id: c.id, display: display, body: body)
+        // 무거운 테두리 생성(블러+드로잉)은 백그라운드에서 — 메인스레드 렉 방지.
+        let prepared = await Task.detached(priority: .userInitiated) {
+            display.whiteStickerBordered()
+        }.value
+        scene.addCatch(id: c.id, bordered: prepared.bordered, working: prepared.working, body: body)
     }
 
     private func remove(_ id: UUID) async {
         guard let c = byId[id] else { return }
         byId[id] = nil
+        catches.removeAll { $0.id == id }
         await repo.delete(c)
         if byId.isEmpty { isEmpty = true }
     }
@@ -113,6 +127,11 @@ struct HomeView: View {
             SpriteView(scene: holder.scene, options: [.ignoresSiblingOrder])
                 .ignoresSafeArea()
 
+            // 그리드 보기 — 물리 대신 고정 크기 스크롤 격자.
+            if holder.gridMode {
+                gridView.transition(.opacity)
+            }
+
             if holder.isLoading {
                 CatchLoader()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -124,6 +143,7 @@ struct HomeView: View {
             }
             .padding(.top, deviceSafeAreaTop + 4)
         }
+        .animation(.easeInOut(duration: 0.25), value: holder.gridMode)
         .overlay {
             if let img = holder.focusedImage {
                 FocusedStickerView(image: img) {
@@ -147,6 +167,34 @@ struct HomeView: View {
                 }
             })
         }
+    }
+
+    /// 그리드 보기 — 고정 크기 셀의 스크롤 격자(탭→포커스, 길게눌러 삭제).
+    private var gridView: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 14)], spacing: 14) {
+                ForEach(holder.catches) { c in
+                    Button { Task { await holder.focus(c.id) } } label: {
+                        CachedCatchImage(path: c.imagePath)
+                            .padding(10)
+                            .frame(height: 116)
+                            .frame(maxWidth: .infinity)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            Task { await holder.deleteFromGrid(c.id) }
+                        } label: { Label("삭제", systemImage: "trash") }
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, deviceSafeAreaTop + 116)
+            .padding(.bottom, deviceSafeAreaBottom + 96)
+        }
+        .scrollIndicators(.hidden)
+        .background(Color.black.ignoresSafeArea())
     }
 
     private var folderBar: some View {

@@ -23,7 +23,10 @@ final class ReadonlyJarHolder: ObservableObject {
             try? await Task.sleep(nanoseconds: 70_000_000)
             guard let display = await repo.displayImage(for: c) else { continue }
             let body = await repo.bodyImage(for: c) ?? display
-            scene.addCatch(id: c.id, display: display, body: body)
+            let prepared = await Task.detached(priority: .userInitiated) {
+                display.whiteStickerBordered()
+            }.value
+            scene.addCatch(id: c.id, bordered: prepared.bordered, working: prepared.working, body: body)
         }
     }
 }

@@ -1,99 +1,114 @@
 import AVFoundation
 import UIKit
 
-enum CameraError: Error { case captureFailed }
+enum CameraError: LocalizedError {
+    case notReady, captureFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .notReady:      return "카메라가 아직 준비되지 않았어요."
+        case .captureFailed: return "촬영에 실패했어요. 다시 시도해주세요."
+        }
+    }
+}
 
 /// 후면/전면 정지 촬영 래퍼.
 /// - 권한 확인 → 세션 구성(입력+출력 원자적) → 시작/정지 → 촬영.
-/// - 세션 변경은 전용 큐에서, 상태 발행은 메인에서.
+/// - 구성은 메인에서 동기로(프리뷰 표시 안정), 시작·정지·촬영은 전용 큐에서.
+/// - 상태(`status`)는 항상 메인에서 발행.
 @MainActor
 final class CameraController: NSObject, ObservableObject {
-    enum Status { case idle, configuring, ready, denied, failed }
+    enum Status: Equatable { case idle, configuring, ready, denied, failed }
 
     @Published private(set) var status: Status = .idle
-    @Published var position: AVCaptureDevice.Position = .back
+    @Published private(set) var position: AVCaptureDevice.Position = .back
 
     let session = AVCaptureSession()
-    private let photoOutput = AVCapturePhotoOutput()
-    private let queue = DispatchQueue(label: "catch.camera.session")
-    private var configured = false
-    private var photoContinuation: CheckedContinuation<UIImage, Error>?
+    private let output = AVCapturePhotoOutput()
+    private let sessionQueue = DispatchQueue(label: "catch.camera.session")
+
+    private var isConfigured = false
+    private var shouldRun = false               // 켜져 있어야 하는지(구성 완료 전 start 요청 대비)
+    private var activeCapture: PhotoCaptureDelegate?  // 캡처 진행 중 델리게이트 강한 보유
 
     override init() {
         super.init()
-        prepare()
+        // 권한이 이미 있으면 즉시 동기 구성(프리뷰가 곧바로 뜨도록).
+        if AVCaptureDevice.authorizationStatus(for: .video) == .authorized { configureIfNeeded() }
     }
 
     // MARK: - 권한 + 구성
 
-    /// 권한 확인 후 세션을 구성한다(필요 시 권한 팝업).
-    func prepare() {
+    /// 카메라 진입 전 호출: 권한 확인 후 세션을 구성한다(세션 시작은 별도).
+    func prepare() async {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
-            configure()
+            break
         case .notDetermined:
             status = .configuring
-            AVCaptureDevice.requestAccess(for: .video) { granted in
-                Task { @MainActor in
-                    if granted { self.configure() } else { self.status = .denied }
-                }
-            }
+            guard await AVCaptureDevice.requestAccess(for: .video) else { status = .denied; return }
         default:
             status = .denied
+            return
         }
+        configureIfNeeded()
     }
 
-    /// 메인에서 동기 구성(이게 안정적). 입력·출력 모두 성공해야 .ready.
-    private func configure() {
-        guard !configured else { status = .ready; if wantsRunning { startRunning() }; return }
+    /// 메인에서 동기 구성(이게 표시에 안정적). 입력·출력 모두 성공해야 .ready.
+    private func configureIfNeeded() {
+        guard !isConfigured else { status = .ready; return }
         status = .configuring
         session.beginConfiguration()
         session.sessionPreset = .photo
-        session.inputs.forEach { session.removeInput($0) }
-        session.outputs.forEach { session.removeOutput($0) }
 
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position),
-              let input = try? AVCaptureDeviceInput(device: device),
-              session.canAddInput(input), session.canAddOutput(photoOutput) else {
+        guard let input = makeInput(for: position),
+              session.canAddInput(input), session.canAddOutput(output) else {
             session.commitConfiguration()
             status = .failed
+            Log.camera.error("session configure failed")
             return
         }
         session.addInput(input)
-        session.addOutput(photoOutput)
+        session.addOutput(output)
         session.commitConfiguration()
-        configured = true
+
+        isConfigured = true
         status = .ready
-        if wantsRunning { startRunning() }
+        if shouldRun { startSession() }   // 구성 전 들어온 start 요청 처리(레이스 방지)
+    }
+
+    private func makeInput(for position: AVCaptureDevice.Position) -> AVCaptureDeviceInput? {
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position),
+              let input = try? AVCaptureDeviceInput(device: device) else { return nil }
+        return input
     }
 
     // MARK: - 실행 제어
 
-    private var wantsRunning = false
-
-    func startRunning() {
-        wantsRunning = true
-        let session = self.session
-        queue.async { if !session.inputs.isEmpty, !session.isRunning { session.startRunning() } }
+    func startSession() {
+        shouldRun = true
+        guard isConfigured else { return }      // 구성되면 configureIfNeeded가 다시 시작
+        sessionQueue.async { [session] in
+            if !session.isRunning { session.startRunning() }
+        }
     }
 
-    func stopRunning() {
-        wantsRunning = false
-        let session = self.session
-        queue.async { if session.isRunning { session.stopRunning() } }
+    func stopSession() {
+        shouldRun = false
+        sessionQueue.async { [session] in
+            if session.isRunning { session.stopRunning() }
+        }
     }
 
     /// 전/후면 전환.
     func flip() {
+        guard isConfigured else { return }
         position = (position == .back) ? .front : .back
-        let session = self.session
-        let position = self.position
-        queue.async {
+        let newPosition = position
+        sessionQueue.async { [session, weak self] in
             session.beginConfiguration()
             session.inputs.forEach { session.removeInput($0) }
-            if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position),
-               let input = try? AVCaptureDeviceInput(device: device),
-               session.canAddInput(input) {
+            if let input = self?.makeInput(for: newPosition), session.canAddInput(input) {
                 session.addInput(input)
             }
             session.commitConfiguration()
@@ -103,35 +118,44 @@ final class CameraController: NSObject, ObservableObject {
     // MARK: - 촬영
 
     func capturePhoto() async throws -> UIImage {
-        guard photoContinuation == nil else { throw CameraError.captureFailed }
-        let output = self.photoOutput
-        return try await withCheckedThrowingContinuation { cont in
-            self.photoContinuation = cont
-            self.queue.async {
-                output.capturePhoto(with: AVCapturePhotoSettings(), delegate: self)
+        guard status == .ready else { throw CameraError.notReady }
+        return try await withCheckedThrowingContinuation { continuation in
+            // 캡처 1건 전용 델리게이트 — 완료까지 컨트롤러가 강하게 보유해 콜백 유실을 막는다.
+            let delegate = PhotoCaptureDelegate { [weak self] result in
+                Task { @MainActor in self?.activeCapture = nil }
+                continuation.resume(with: result)
+            }
+            self.activeCapture = delegate
+            sessionQueue.async { [output, session] in
+                guard session.isRunning else {
+                    // 세션이 안 켜졌으면 무한 대기 대신 명확히 실패.
+                    Task { @MainActor in self.activeCapture = nil }
+                    continuation.resume(throwing: CameraError.notReady)
+                    return
+                }
+                output.capturePhoto(with: AVCapturePhotoSettings(), delegate: delegate)
             }
         }
     }
 }
 
-extension CameraController: AVCapturePhotoCaptureDelegate {
-    nonisolated func photoOutput(_ output: AVCapturePhotoOutput,
-                                 didFinishProcessingPhoto photo: AVCapturePhoto,
-                                 error: Error?) {
-        let result: Result<UIImage, Error>
+/// 캡처 1건 전용 델리게이트. 완료 시 결과를 한 번만 전달한다.
+private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
+    private let completion: (Result<UIImage, Error>) -> Void
+
+    init(completion: @escaping (Result<UIImage, Error>) -> Void) {
+        self.completion = completion
+    }
+
+    func photoOutput(_ output: AVCapturePhotoOutput,
+                     didFinishProcessingPhoto photo: AVCapturePhoto,
+                     error: Error?) {
         if let error {
-            result = .failure(error)
+            completion(.failure(error))
         } else if let data = photo.fileDataRepresentation(), let image = UIImage(data: data) {
-            result = .success(image)
+            completion(.success(image))
         } else {
-            result = .failure(CameraError.captureFailed)
-        }
-        Task { @MainActor in
-            switch result {
-            case .success(let image): self.photoContinuation?.resume(returning: image)
-            case .failure(let err):   self.photoContinuation?.resume(throwing: err)
-            }
-            self.photoContinuation = nil
+            completion(.failure(CameraError.captureFailed))
         }
     }
 }

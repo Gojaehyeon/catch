@@ -15,7 +15,6 @@ final class StickerScene: SKScene {
     var onTapCatch: ((UUID) -> Void)?
 
     private let displayMaxDimension: CGFloat = 140
-    static let rimColor = UIColor(hex: 0xE3FB85)   // 테마 라임
 
     /// 하단 툴바(가운데 알약) 충돌 바디 — 스티커가 바에 가려지지 않게 부딪힘.
     /// (width, height, bottomMargin) — 씬 좌표 기준, 가로 중앙 정렬.
@@ -122,9 +121,15 @@ final class StickerScene: SKScene {
 
     // MARK: - Spawning
 
-    /// 캐치 1개를 물리 항아리에 투하한다(이미지는 호스트가 로드해 전달).
-    func addCatch(id: UUID, display: UIImage, body: UIImage) {
-        addStickerNode(displayImage: display, bodyImage: body, id: id)
+    /// 캐치 1개를 물리 항아리에 투하한다.
+    /// 무거운 테두리 생성은 호스트가 백그라운드에서 끝내 `bordered`/`working`을 넘긴다(메인 렉 방지).
+    func addCatch(id: UUID, bordered: UIImage, working: UIImage, body: UIImage) {
+        addStickerNode(bordered: bordered, working: working, bodyImage: body, id: id)
+    }
+
+    /// id로 스티커 노드를 즉시 제거(그리드에서 삭제 시).
+    func removeNode(id: UUID) {
+        childNode(withName: id.uuidString)?.removeFromParent()
     }
 
     /// 항아리를 비운다(폴더 전환 시).
@@ -141,12 +146,7 @@ final class StickerScene: SKScene {
         longPressTimer = nil
     }
 
-    private func addStickerNode(displayImage: UIImage, bodyImage: UIImage, id: UUID) {
-        // 누끼 둘레에 테마색(라임) 스티커 테두리.
-        let working = displayImage.resized(maxDimension: 420)
-        let borderW = max(working.size.width, working.size.height) * 0.045
-        let bordered = working.stickerBordered(color: StickerScene.rimColor, width: borderW)
-
+    private func addStickerNode(bordered: UIImage, working: UIImage, bodyImage: UIImage, id: UUID) {
         let texture = SKTexture(image: bordered)
         let node = SKSpriteNode(texture: texture)
         node.name = id.uuidString
