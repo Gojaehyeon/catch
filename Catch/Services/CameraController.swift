@@ -10,12 +10,20 @@ final class CameraController: NSObject, ObservableObject {
 
     @Published var status: Status = .unknown
 
+    /// 디버그용 현재 권한(0=미정,1=제한,2=거부,3=허용).
+    var authRaw: Int { AVCaptureDevice.authorizationStatus(for: .video).rawValue }
+
     @Published var position: AVCaptureDevice.Position = .back
 
     let session = AVCaptureSession()
     private let photoOutput = AVCapturePhotoOutput()
     private let sessionQueue = DispatchQueue(label: "catch.camera.session")
     private var captureContinuation: CheckedContinuation<UIImage, Error>?
+
+    override init() {
+        super.init()
+        start()   // 생성 즉시 권한 확인 + 입력 구성(뷰 라이프사이클에 의존 안 함)
+    }
 
     /// 전/후면 전환.
     func flip() async {
@@ -102,15 +110,61 @@ final class CameraController: NSObject, ObservableObject {
         }
     }
 
+    private var wantsRunning = false
+
     func startSession() {
+        wantsRunning = true
+        let session = self.session
         sessionQueue.async {
-            if !self.session.isRunning { self.session.startRunning() }
+            if !session.inputs.isEmpty, !session.isRunning { session.startRunning() }
         }
     }
 
     func stopSession() {
+        wantsRunning = false
+        let session = self.session
         sessionQueue.async {
-            if self.session.isRunning { self.session.stopRunning() }
+            if session.isRunning { session.stopRunning() }
+        }
+    }
+
+    // MARK: - 견고한 시작(완료 핸들러 기반 — Task 취소/서스펜션 영향 없음)
+
+    /// 진입 시 1회 호출. 권한 확인 후 입력만 구성(세션 시작은 startSession이 담당).
+    func start() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            configureInputs()
+        case .notDetermined:
+            status = .configuring
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                DispatchQueue.main.async {
+                    if granted { self?.configureInputs() } else { self?.status = .denied }
+                }
+            }
+        default:
+            status = .denied
+        }
+    }
+
+    /// 입력/출력 구성 — 메인에서 동기적으로(큐 데드락 회피). startRunning만 백그라운드.
+    private func configureInputs() {
+        if !session.inputs.isEmpty { status = .ready; if wantsRunning { startSession() }; return }
+        session.beginConfiguration()
+        session.sessionPreset = .photo
+        session.inputs.forEach { session.removeInput($0) }
+        session.outputs.forEach { session.removeOutput($0) }
+        if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position),
+           let input = try? AVCaptureDeviceInput(device: device),
+           session.canAddInput(input) {
+            session.addInput(input)
+            if session.canAddOutput(photoOutput) { session.addOutput(photoOutput) }
+            session.commitConfiguration()
+            status = .ready
+            if wantsRunning { startSession() }
+        } else {
+            session.commitConfiguration()
+            status = .failed
         }
     }
 

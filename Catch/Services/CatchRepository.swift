@@ -56,7 +56,8 @@ final class CatchRepository {
     // MARK: - 촬영 직후: 로컬 즉시 저장
     @discardableResult
     func capture(image: UIImage) async throws -> CloudCatch {
-        let uid = try await Supa.client.auth.session.user.id
+        // 로컬-퍼스트: 네트워크 동반 세션 대신 캐시된 로컬 세션 사용(멈춤 방지).
+        guard let uid = Supa.client.auth.currentSession?.user.id else { throw CatchError.notAuthed }
         let id = UUID()
         let uidStr = uid.uuidString.lowercased()
         let idStr = id.uuidString.lowercased()

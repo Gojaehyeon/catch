@@ -108,7 +108,7 @@ struct CameraFlowView: View {
         VStack(spacing: 20) {
             Image(systemName: "exclamationmark.triangle").font(.system(size: 44)).foregroundStyle(.white.opacity(0.7))
             Text("카메라를 시작할 수 없어요").font(.title3.bold()).foregroundStyle(.white)
-            Button("다시 시도") { Task { await camera.requestAccessAndConfigure() } }
+            Button("다시 시도") { camera.start() }
                 .buttonStyle(.borderedProminent).tint(Theme.coral)
             Button("닫기") { onClose() }.foregroundStyle(.white.opacity(0.7))
         }.padding()

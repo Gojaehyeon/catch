@@ -54,10 +54,9 @@ struct MainContainerView: View {
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.82), value: page)
         .animation(.easeInOut(duration: 0.25), value: capturing)
-        .task {
-            // 진입 시 권한 팝업 + 세션 구성(입력 준비). 카메라 페이지 아니면 바로 정지.
-            await camera.requestAccessAndConfigure()
-            if page != .camera { camera.stopSession() }
+        .onAppear {
+            // 진입 시 권한 확인 + 입력 구성(완료 핸들러 기반 — 취소 영향 없음).
+            camera.start()
         }
         .onChange(of: page) { _, p in
             if p == .camera { camera.startSession() } else { camera.stopSession() }
