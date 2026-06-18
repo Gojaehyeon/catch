@@ -47,57 +47,58 @@ struct CameraFlowView: View {
     }
 
     private var captureView: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .top) {
-                CameraPreview(session: camera.session)
-                    .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-                    .padding(.horizontal, 6)
-                    .padding(.bottom, 130)
-                    .padding(.top, 4)
+        ZStack(alignment: .top) {
+            // 프리뷰 — 안전영역 안(바깥은 검정) + 좌우 여백 + 라임 테두리
+            CameraPreview(session: camera.session)
+                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .strokeBorder(Theme.lime, lineWidth: 2)
+                )
+                .padding(.horizontal, 12)
+                .padding(.bottom, 118)
 
-                // X 닫기
-                HStack {
-                    Spacer()
-                    Button { onClose() } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 36, height: 36)
-                            .background(.ultraThinMaterial, in: Circle())
-                    }
-                }
-                .padding(.horizontal, 18)
-                .padding(.top, 14)
-
-                // 셔터 + 우측 전/후면 플립
-                VStack {
-                    Spacer()
-                    ZStack {
-                        Button(action: capture) {
-                            ZStack {
-                                Circle().stroke(.white, lineWidth: 4).frame(width: 76, height: 76)
-                                Circle().fill(.white).frame(width: 62, height: 62)
-                            }
-                        }
-                        HStack {
-                            Spacer()
-                            Button {
-                                Task { await camera.flip() }
-                            } label: {
-                                Image(systemName: "arrow.triangle.2.circlepath")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 52, height: 52)
-                                    .liquidGlass(Circle(), interactive: true)
-                            }
-                            .padding(.trailing, 44)
-                        }
-                    }
-                    .padding(.bottom, 150)
+            // X 닫기
+            HStack {
+                Spacer()
+                Button { onClose() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 36, height: 36)
+                        .background(.ultraThinMaterial, in: Circle())
                 }
             }
+            .padding(.horizontal, 26)
+            .padding(.top, 12)
+
+            // 셔터 + 우측 전/후면 플립
+            VStack {
+                Spacer()
+                ZStack {
+                    Button(action: capture) {
+                        ZStack {
+                            Circle().stroke(.white, lineWidth: 4).frame(width: 76, height: 76)
+                            Circle().fill(.white).frame(width: 62, height: 62)
+                        }
+                    }
+                    HStack {
+                        Spacer()
+                        Button {
+                            Task { await camera.flip() }
+                        } label: {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 52, height: 52)
+                                .liquidGlass(Circle(), interactive: true)
+                        }
+                        .padding(.trailing, 40)
+                    }
+                }
+                .padding(.bottom, 150)
+            }
         }
-        .ignoresSafeArea(edges: .top)
     }
 
     private var deniedView: some View {
