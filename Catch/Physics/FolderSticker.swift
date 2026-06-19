@@ -9,11 +9,21 @@ enum FolderPalette {
     static func color(_ i: Int?) -> Color { Color(hex: hexes[(i ?? 0) % hexes.count]) }
 }
 
-/// 폴더 레이블(글자) 색 팔레트. 0 = 검정(기본).
-enum FolderLabelPalette {
-    static let hexes: [UInt] = [0x111111, 0xFFFFFF, 0xFF6B6B, 0x4D7CFF, 0x1FB573, 0xC4B0FF]
-    static func uiColor(_ i: Int?) -> UIColor { UIColor(hex: hexes[(i ?? 0) % hexes.count]) }
-    static func color(_ i: Int?) -> Color { Color(hex: hexes[(i ?? 0) % hexes.count]) }
+/// 폴더 레이블(글자) 색 — 항상 채움색의 어둡고 진한 버전(옵션 없음).
+enum FolderLabel {
+    static func uiColor(_ index: Int? = nil, fill: Int?) -> UIColor {
+        FolderPalette.uiColor(fill).deepened()
+    }
+    static func color(fill: Int?) -> Color { Color(uiColor: uiColor(fill: fill)) }
+}
+
+private extension UIColor {
+    /// 같은 색상의 어둡고 진한 버전(채도↑ 명도↓).
+    func deepened() -> UIColor {
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        guard getHue(&h, saturation: &s, brightness: &b, alpha: &a) else { return self }
+        return UIColor(hue: h, saturation: min(1, s * 1.4 + 0.25), brightness: b * 0.42, alpha: a)
+    }
 }
 
 /// 폴더를 항아리 속 물리 객체로 표현하는 모양. 저장값(없으면 id 기반 기본).

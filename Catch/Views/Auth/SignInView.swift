@@ -11,7 +11,9 @@ struct SignInView: View {
             // 로고 (Assets의 CatchLogo, 없으면 텍스트 폴백)
             if UIImage(named: "CatchLogo") != nil {
                 Image("CatchLogo")
+                    .renderingMode(.template)
                     .resizable().scaledToFit()
+                    .foregroundStyle(Theme.lime)
                     .frame(height: 72)
                     .padding(.horizontal, 48)
             } else {

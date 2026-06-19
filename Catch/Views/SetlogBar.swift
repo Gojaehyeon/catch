@@ -11,12 +11,11 @@ enum CatchMode: String, CaseIterable {
         }
     }
 
-    /// 하찮고 귀여운 아이콘.
     var icon: String {
         switch self {
         case .camera: return "camera.fill"
-        case .jar: return "shippingbox.fill"
-        case .profile: return "face.smiling.inverse"
+        case .jar: return "face.smiling.inverse"   // 스티커 항아리 = 웃는 얼굴
+        case .profile: return "person.fill"        // 인물
         }
     }
 }

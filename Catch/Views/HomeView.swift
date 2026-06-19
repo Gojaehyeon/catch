@@ -154,8 +154,12 @@ final class SceneHolder: ObservableObject {
     func deleteFolder(_ id: UUID) async {
         await FolderRepository.shared.delete(id)
         folders.removeAll { $0.id == id }
-        scene.removeFolderNode(id: id)
         folderToEdit = nil
+        if currentFolder?.id == id {   // 보고 있던 폴더를 지웠으면 루트로
+            await exitToRoot()
+        } else {
+            scene.removeFolderNode(id: id)
+        }
     }
 
     /// 스티커를 폴더에 담는다(노드는 씬에서 빨려 들어가는 중). 데이터/서버 배정 + 현재 목록에서 제거.
@@ -284,6 +288,26 @@ struct HomeView: View {
     private var gridView: some View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 14)], spacing: 14) {
+                // 루트면 폴더 먼저(탭→진입, 길게눌러 편집).
+                if holder.currentFolder == nil {
+                    ForEach(holder.folders) { f in
+                        Button { Task { await holder.enterFolder(f.id) } } label: {
+                            Image(uiImage: FolderShape.resolve(f.shape, id: f.id)
+                                .image(name: f.name, fill: FolderPalette.uiColor(f.color),
+                                       label: FolderLabel.uiColor(fill: f.color)))
+                                .resizable().scaledToFit()
+                                .padding(8)
+                                .frame(height: 116)
+                                .frame(maxWidth: .infinity)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            Button { holder.folderToEdit = f } label: { Label("편집", systemImage: "pencil") }
+                            Button(role: .destructive) { Task { await holder.deleteFolder(f.id) } } label: { Text("삭제") }
+                        }
+                    }
+                }
                 ForEach(holder.catches) { c in
                     Button { Task { await holder.focus(c.id) } } label: {
                         BorderedStickerImage(path: c.imagePath)
@@ -329,7 +353,8 @@ struct HomeView: View {
                             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: holder.ejectHovering)
                     }
                 } else if UIImage(named: "CatchLogo") != nil {
-                    Image("CatchLogo").resizable().scaledToFit().frame(height: 26)
+                    Image("CatchLogo").renderingMode(.template).resizable().scaledToFit()
+                        .foregroundStyle(Theme.lime).frame(height: 26)
                 } else {
                     Text("catch").font(.system(size: 24, weight: .heavy)).foregroundStyle(Theme.lime)
                 }
@@ -341,10 +366,16 @@ struct HomeView: View {
                             .font(.system(size: 18, weight: .semibold)).foregroundStyle(.white)
                             .frame(width: 44, height: 44).liquidGlass(Circle(), interactive: true)
                     }
-                    // 폴더 추가 — 루트에서만(편집과 동일한 화면, "새 폴더")
+                    // 루트: 폴더 추가 / 폴더 안: 현재 폴더 편집
                     if holder.currentFolder == nil {
                         Button { holder.beginCreateFolder() } label: {
                             Image(systemName: "plus")
+                                .font(.system(size: 18, weight: .semibold)).foregroundStyle(.white)
+                                .frame(width: 44, height: 44).liquidGlass(Circle(), interactive: true)
+                        }
+                    } else {
+                        Button { holder.folderToEdit = holder.currentFolder } label: {
+                            Image(systemName: "ellipsis")
                                 .font(.system(size: 18, weight: .semibold)).foregroundStyle(.white)
                                 .frame(width: 44, height: 44).liquidGlass(Circle(), interactive: true)
                         }

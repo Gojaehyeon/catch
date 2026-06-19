@@ -11,9 +11,7 @@ struct FolderEditView: View {
     @State private var name: String
     @State private var shapeIndex: Int
     @State private var colorIndex: Int
-    @State private var labelIndex: Int
     @State private var confirmDelete = false
-    @FocusState private var nameFocused: Bool
 
     init(folder: Folder, isNew: Bool = false,
          onSave: @escaping (String, Int?, Int?, Int?) -> Void,
@@ -24,12 +22,11 @@ struct FolderEditView: View {
         _name = State(initialValue: folder.name)
         _shapeIndex = State(initialValue: FolderShape.resolve(folder.shape, id: folder.id).index)
         _colorIndex = State(initialValue: folder.color ?? 0)
-        _labelIndex = State(initialValue: folder.labelColor ?? 0)
     }
 
     private var shape: FolderShape { FolderShape.allCases[shapeIndex] }
     private var fillColor: UIColor { FolderPalette.uiColor(colorIndex) }
-    private var labelColor: UIColor { FolderLabelPalette.uiColor(labelIndex) }
+    private var labelColor: UIColor { FolderLabel.uiColor(fill: colorIndex) }
 
     var body: some View {
         NavigationStack {
@@ -39,7 +36,6 @@ struct FolderEditView: View {
                     nameField
                     shapeSection
                     colorSection
-                    labelSection
                     if !isNew { deleteButton.padding(.top, 8) }
                 }
                 .padding(20)
@@ -51,7 +47,7 @@ struct FolderEditView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(isNew ? "추가" : "저장") {
                         let n = name.trimmingCharacters(in: .whitespaces)
-                        onSave(n.isEmpty ? folder.name : n, shapeIndex, colorIndex, labelIndex)
+                        onSave(n.isEmpty ? folder.name : n, shapeIndex, colorIndex, nil)
                     }.fontWeight(.bold)
                 }
             }
@@ -97,20 +93,6 @@ struct FolderEditView: View {
                 ForEach(FolderPalette.hexes.indices, id: \.self) { i in
                     cell(selected: colorIndex == i) { colorIndex = i } content: {
                         Circle().fill(FolderPalette.color(i)).padding(10)
-                    }
-                }
-            }
-        }
-    }
-
-    private var labelSection: some View {
-        section("레이블") {
-            grid {
-                ForEach(FolderLabelPalette.hexes.indices, id: \.self) { i in
-                    cell(selected: labelIndex == i) { labelIndex = i } content: {
-                        Circle().fill(FolderLabelPalette.color(i))
-                            .overlay(Circle().strokeBorder(.white.opacity(0.25), lineWidth: 1))
-                            .padding(10)
                     }
                 }
             }

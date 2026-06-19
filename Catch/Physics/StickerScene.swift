@@ -201,7 +201,7 @@ final class StickerScene: SKScene {
     func addFolder(id: UUID, name: String, shape rawShape: Int? = nil, color: Int? = nil, labelColor: Int? = nil) {
         let shape = FolderShape.resolve(rawShape, id: id)
         let image = shape.image(name: name, fill: FolderPalette.uiColor(color),
-                                label: FolderLabelPalette.uiColor(labelColor))
+                                label: FolderLabel.uiColor(labelColor, fill: color))
         let node = SKSpriteNode(texture: SKTexture(image: image))
         node.name = "F:" + id.uuidString
 
