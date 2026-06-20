@@ -9,6 +9,7 @@ final class FollowHolder: ObservableObject {
     @Published var gridMode = false
     @Published var isEmpty = false
     @Published var tapped: UUID?
+    @Published private(set) var people: [Profile] = []
     private var loaded = false
 
     init() {
@@ -19,9 +20,10 @@ final class FollowHolder: ObservableObject {
     func loadIfNeeded(of userId: UUID) async {
         guard !loaded else { return }
         loaded = true
-        let people = await ProfileRepository.shared.following(of: userId)
-        isEmpty = people.isEmpty
-        for p in people {
+        let list = await ProfileRepository.shared.following(of: userId)
+        people = list
+        isEmpty = list.isEmpty
+        for p in list {
             var avatar: UIImage?
             if let path = p.avatarUrl, !path.isEmpty {
                 avatar = await ProfileRepository.shared.avatarImage(path: path)
@@ -32,9 +34,10 @@ final class FollowHolder: ObservableObject {
         }
     }
 
+    /// 중력 서클 ↔ 스크롤뷰 그리드 전환.
     func toggleGrid() {
         gridMode.toggle()
-        if gridMode { scene.arrangeGrid() } else { scene.releaseGrid() }
+        scene.isPaused = gridMode   // 그리드 중엔 물리 정지(그리드가 위를 덮음)
     }
 }
 
@@ -121,14 +124,8 @@ struct ProfilePageView: View {
                         } label: { Label("사진 삭제", systemImage: "trash") }
                     }
                 } label: {
-                    ZStack(alignment: .bottomTrailing) {
-                        AvatarView(path: auth.profile?.avatarUrl, fallbackText: username, size: 88)
-                            .overlay(Circle().strokeBorder(Theme.lime, lineWidth: 2.5))
-                        Image(systemName: "pencil")
-                            .font(.system(size: 11, weight: .black)).foregroundStyle(.black)
-                            .frame(width: 26, height: 26).background(Theme.lime, in: Circle())
-                            .overlay(Circle().strokeBorder(.black, lineWidth: 2.5))
-                    }
+                    AvatarView(path: auth.profile?.avatarUrl, fallbackText: username, size: 88)
+                        .overlay(Circle().strokeBorder(.white, lineWidth: 2.5))
                 }
 
                 HStack(spacing: 0) {
@@ -175,11 +172,38 @@ struct ProfilePageView: View {
                 .background(Color.clear)
                 .ignoresSafeArea(edges: .bottom)   // 씬 바닥=화면 바닥 → 하단 탭바 배리어 좌표 일치
 
+            if follow.gridMode { followGrid.transition(.opacity) }
+
             if follow.isEmpty {
                 emptyState("아직 팔로우한 친구가 없어요", action: { showSearch = true }).padding(.top, 70)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(.easeInOut(duration: 0.3), value: follow.gridMode)
+    }
+
+    /// 팔로잉 프로필 스크롤뷰 그리드(정렬 버튼).
+    private var followGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 16)], spacing: 18) {
+                ForEach(follow.people) { p in
+                    NavigationLink(value: p.id) {
+                        VStack(spacing: 6) {
+                            AvatarView(path: p.avatarUrl, fallbackText: p.username, size: 76)
+                                .overlay(Circle().strokeBorder(.white.opacity(0.6), lineWidth: 2))
+                            Text(p.username ?? "").font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Theme.ink).lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16).padding(.top, 40)
+            .padding(.bottom, deviceSafeAreaBottom + 96)
+        }
+        .scrollIndicators(.hidden)
+        .background(Color.black.ignoresSafeArea())
     }
 
     private func emptyState(_ text: String, action: (() -> Void)?) -> some View {

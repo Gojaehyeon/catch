@@ -7,6 +7,13 @@ struct ProfileView: View {
     var isSelf: Bool = false
 
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var jar: UserJarHolder
+
+    init(userId: UUID, isSelf: Bool = false) {
+        self.userId = userId
+        self.isSelf = isSelf
+        _jar = StateObject(wrappedValue: UserJarHolder(userId: userId))
+    }
 
     @State private var profile: Profile?
     @State private var counts: ProfileCounts?
@@ -20,24 +27,46 @@ struct ProfileView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            UserCollectionView(userId: userId)
+            UserCollectionView(holder: jar)
         }
         .background(Color.black.ignoresSafeArea())
+        // 스티커 상세 — 헤더까지 전부 덮도록 ProfileView 레벨 오버레이.
+        .overlay {
+            if let c = jar.focused {
+                StickerDetailView(
+                    catchId: c.id, imagePath: c.imagePath, ownerId: c.ownerId,
+                    initialTitle: c.title, preloaded: jar.focusedImage,
+                    onClose: { jar.dismissFocus() }
+                )
+                .ignoresSafeArea()
+                .transition(.scale(scale: 0.9, anchor: .center).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.42, dampingFraction: 0.82), value: jar.focused != nil)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: FollowListRoute.self) { FollowListView(userId: $0.userId, kind: $0.kind) }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text(username).font(.system(size: 17, weight: .bold)).foregroundStyle(Theme.ink)
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { jar.toggleGrid() } label: {
+                    Image(systemName: jar.isGrid ? "circle.grid.3x3.fill" : "square.grid.2x2")
+                        .foregroundStyle(.white)
+                }
+            }
             if !isSelf {
+                if #available(iOS 26.0, *) {
+                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button(role: .destructive) { confirmReport = true } label: {
-                            Label("신고", systemImage: "flag")
+                        Button { confirmReport = true } label: {
+                            Label("신고", systemImage: "flag").foregroundStyle(.white)
                         }
-                        Button(role: .destructive) {
+                        Button {
                             Task { await ModerationRepository.shared.block(userId); dismiss() }
-                        } label: { Label("차단", systemImage: "hand.raised") }
+                        } label: { Label("차단", systemImage: "hand.raised").foregroundStyle(.white) }
                     } label: { Image(systemName: "ellipsis").foregroundStyle(.white) }
                 }
             }
@@ -61,7 +90,7 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 22) {
                 AvatarView(path: profile?.avatarUrl, fallbackText: username, size: 88)
-                    .overlay(Circle().strokeBorder(Theme.lime, lineWidth: 2.5))
+                    .overlay(Circle().strokeBorder(.white, lineWidth: 2.5))
 
                 VStack(spacing: 10) {
                     HStack(spacing: 0) {

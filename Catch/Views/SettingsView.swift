@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var auth: AuthService
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @State private var confirmDelete = false
     @State private var working = false
 
@@ -10,45 +11,31 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 Section {
-                    HStack(spacing: 14) {
-                        Image(systemName: "person.crop.circle.fill")
-                            .font(.system(size: 44)).foregroundStyle(.secondary)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(auth.profile?.displayName ?? "Catch 사용자")
-                                .font(.headline)
-                            Text("@\(auth.profile?.username ?? "")")
-                                .font(.subheadline).foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 6)
+                    developerIntro
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                 }
 
                 Section {
-                    Button(role: .destructive) {
+                    Button {
                         working = true
                         Task { await auth.signOut(); working = false; dismiss() }
-                    } label: { Label("로그아웃", systemImage: "rectangle.portrait.and.arrow.right") }
+                    } label: { Label("로그아웃", systemImage: "rectangle.portrait.and.arrow.right").foregroundStyle(.white) }
 
-                    Button(role: .destructive) {
+                    Button {
                         confirmDelete = true
-                    } label: { Label("계정 삭제", systemImage: "trash") }
-                }
-
-                Section {
-                    Link(destination: URL(string: "https://github.com/Gojaehyeon/catch")!) {
-                        Label("정보", systemImage: "info.circle")
-                    }
-                } footer: {
-                    Text("Catch")
+                    } label: { Label("회원 탈퇴", systemImage: "trash").foregroundStyle(.white) }
                 }
             }
-            .navigationTitle("프로필")
+            .navigationTitle("Catch!")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() } } }
             .disabled(working)
-            .alert("계정을 삭제할까요?", isPresented: $confirmDelete) {
+            .alert("회원 탈퇴할까요?", isPresented: $confirmDelete) {
                 Button("취소", role: .cancel) {}
-                Button("삭제", role: .destructive) {
+                Button("탈퇴", role: .destructive) {
                     working = true
                     Task { await auth.deleteAccount(); working = false; dismiss() }
                 }
@@ -56,5 +43,46 @@ struct SettingsView: View {
                 Text("프로필과 모든 수집이 영구 삭제되며 되돌릴 수 없어요.")
             }
         }
+    }
+
+    // MARK: - 개발자 소개
+
+    private var developerIntro: some View {
+        VStack(spacing: 12) {
+            Image("DevPhoto")
+                .resizable()
+                .scaledToFill()
+                .frame(width: 120, height: 120)
+                .clipShape(Circle())
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.12), lineWidth: 1))
+
+            Text("Gojaehyun").font(.title2.bold()).foregroundStyle(.white)
+            Text("CEO @tntlabs\nProject Manager @Savetokip")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            HStack(spacing: 10) {
+                linkButton("GitHub", icon: "chevron.left.forwardslash.chevron.right",
+                           url: "https://github.com/Gojaehyeon")
+                linkButton("Instagram", icon: "play.rectangle.fill",
+                           url: "https://www.instagram.com/reel/DZJ4CA6vyLz/?igsh=MTR5aHF5eTVxNHpxcA==")
+            }
+            .padding(.top, 4)
+        }
+    }
+
+    private func linkButton(_ title: String, icon: String, url: String) -> some View {
+        Button {
+            if let u = URL(string: url) { openURL(u) }
+        } label: {
+            Label(title, systemImage: icon)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 18)
+                .background(Theme.surface, in: Capsule())
+        }
+        .buttonStyle(.plain)
     }
 }

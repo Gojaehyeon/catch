@@ -61,6 +61,8 @@ final class StickerScene: SKScene {
 
     /// 읽기전용(타 유저 수집 열람) — 폴더 담기/이젝트/롱프레스 삭제·편집 비활성. 탭/폴더 열기/물리 놀이는 유지.
     var readOnly = false
+    /// 그라데이션 대신 검정 배경(프로필 헤더와 색 일치).
+    var plainBackground = false { didSet { rebuildBackground() } }
 
     /// 그리드 정렬 모드(중력 off, 터치 비활성).
     private(set) var isGrid = false
@@ -156,6 +158,7 @@ final class StickerScene: SKScene {
     }
 
     private func rebuildBackground() {
+        if plainBackground { bgNode?.removeFromParent(); bgNode = nil; backgroundColor = .black; return }
         guard size.width > 1, size.height > 1 else { return }
         bgNode?.removeFromParent()
         let renderer = UIGraphicsImageRenderer(size: size)
@@ -545,15 +548,15 @@ final class StickerScene: SKScene {
         }
     }
 
-    /// 드래그 중인 스티커에 가장 가까운(잡기 반경 내) 폴더 노드. 정확히 안 겹쳐도 잡힘.
+    /// 드래그 중인 스티커가 폴더 위에 "분명히" 올라갔을 때만 그 폴더를 반환.
+    /// 스티커 중심이 폴더 반지름의 60% 안(폴더 중앙부)에 있어야 잡힘 — 살짝 겹치는 정도로는 안 들어감.
     private func folderNode(near node: SKNode) -> SKNode? {
         let p = node.position
         var best: SKNode?
         var bestDist = CGFloat.greatestFiniteMagnitude
         for child in children where child !== node && isFolder(child) {
             let d = hypot(child.position.x - p.x, child.position.y - p.y)
-            let capture = (max(child.frame.width, child.frame.height)
-                           + max(node.frame.width, node.frame.height)) / 2 * 0.85
+            let capture = max(child.frame.width, child.frame.height) / 2 * 0.6
             if d < capture && d < bestDist { best = child; bestDist = d }
         }
         return best

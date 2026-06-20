@@ -1,27 +1,32 @@
 import SwiftUI
 import SpriteKit
 
-/// 타 유저 수집(스티커+폴더) 읽기전용 물리 잼.
+/// 타 유저 수집(스티커+폴더) 읽기전용 물리 잼 + 그리드 전환.
 @MainActor
 final class UserJarHolder: ObservableObject {
     let scene = StickerScene(size: CGSize(width: 390, height: 844))
     @Published var isLoading = true
     @Published var isEmpty = false
+    @Published var isGrid = false
     @Published var currentFolder: Folder?
+    @Published private(set) var folders: [Folder] = []
     @Published var focused: CloudCatch?
     @Published var focusedImage: UIImage?
 
-    private let userId: UUID
-    private var folders: [Folder] = []
+    let userId: UUID
     private var allCatches: [CloudCatch] = []
     private var byId: [UUID: CloudCatch] = [:]
     private let repo = CatchRepository.shared
     private var loaded = false
 
+    /// 현재 보고 있는 레벨(루트/폴더)의 스티커 — 그리드용.
+    var gridCatches: [CloudCatch] { allCatches.filter { $0.folderId == currentFolder?.id } }
+
     init(userId: UUID) {
         self.userId = userId
         scene.scaleMode = .resizeFill
         scene.readOnly = true
+        scene.plainBackground = true
         scene.onTapCatch = { [weak self] id in Task { await self?.focus(id) } }
         scene.onOpenFolder = { [weak self] id in Task { await self?.enterFolder(id) } }
     }
@@ -33,6 +38,11 @@ final class UserJarHolder: ObservableObject {
         allCatches = ((try? await repo.loadUser(userId)) ?? [])
         isLoading = false
         await reload(folderId: nil)
+    }
+
+    func toggleGrid() {
+        isGrid.toggle()
+        scene.isPaused = isGrid   // 그리드 중엔 물리 정지(그리드가 위를 덮음)
     }
 
     func enterFolder(_ id: UUID) async {
@@ -47,7 +57,6 @@ final class UserJarHolder: ObservableObject {
 
     private func reload(folderId: UUID?) async {
         scene.clearAll(); byId.removeAll()
-        // 루트면 공개 폴더들을 모양 노드로 먼저 투하.
         if folderId == nil {
             for f in folders {
                 scene.addFolder(id: f.id, name: f.name, shape: f.shape, color: f.color, labelColor: f.labelColor)
@@ -69,27 +78,30 @@ final class UserJarHolder: ObservableObject {
     }
 
     func focus(_ id: UUID) async {
-        guard let c = byId[id], let img = await repo.displayImage(for: c) else { return }
-        focusedImage = img.whiteStickerBordered().bordered
+        guard let c = byId[id] ?? allCatches.first(where: { $0.id == id }),
+              let img = await repo.displayImage(for: c) else { return }
+        // 테두리 생성(블러+드로잉)은 백그라운드 — 트랜지션 끊김 방지.
+        let bordered = await Task.detached(priority: .userInitiated) { img.whiteStickerBordered().bordered }.value
+        focusedImage = bordered
+        scene.isPaused = true   // 오버레이 뒤 물리 정지 → 부드러운 전환
         focused = c
     }
 
-    func dismissFocus() { focused = nil; focusedImage = nil }
+    func dismissFocus() {
+        focused = nil; focusedImage = nil
+        if !isGrid { scene.isPaused = false }   // 그리드 모드면 계속 정지 유지
+    }
 }
 
 struct UserCollectionView: View {
-    let userId: UUID
-    @StateObject private var holder: UserJarHolder
-
-    init(userId: UUID) {
-        self.userId = userId
-        _holder = StateObject(wrappedValue: UserJarHolder(userId: userId))
-    }
+    @ObservedObject var holder: UserJarHolder
 
     var body: some View {
         ZStack(alignment: .top) {
             SpriteView(scene: holder.scene, options: [.ignoresSiblingOrder])
                 .ignoresSafeArea(edges: .bottom)
+
+            if holder.isGrid { gridOverlay.transition(.opacity) }
 
             if holder.isLoading {
                 CatchLoader().padding(.top, 80)
@@ -114,20 +126,45 @@ struct UserCollectionView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(.easeInOut(duration: 0.3), value: holder.isGrid)
         .task {
             holder.scene.toolbarBarrier = (width: 226, height: 72, bottomMargin: deviceSafeAreaBottom + 6)
             await holder.loadIfNeeded()
         }
-        .overlay {
-            if let c = holder.focused {
-                StickerDetailView(
-                    catchId: c.id, imagePath: c.imagePath, ownerId: c.ownerId,
-                    initialTitle: c.title, preloaded: holder.focusedImage,
-                    onClose: { holder.dismissFocus() }
-                )
-                .transition(.scale(scale: 0.9, anchor: .center).combined(with: .opacity))
+        // 스티커 상세 오버레이는 ProfileView 레벨에서(헤더까지 전부 덮도록).
+    }
+
+    // MARK: - 그리드(스크롤뷰)
+
+    private var gridOverlay: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 14)], spacing: 14) {
+                if holder.currentFolder == nil {
+                    ForEach(holder.folders) { f in
+                        Button { Task { await holder.enterFolder(f.id) } } label: {
+                            Image(uiImage: FolderShape.resolve(f.shape, id: f.id)
+                                .image(name: f.name, fill: FolderPalette.uiColor(f.color),
+                                       label: FolderLabel.uiColor(fill: f.color)))
+                                .resizable().scaledToFit().padding(8)
+                                .frame(height: 116).frame(maxWidth: .infinity)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                ForEach(holder.gridCatches) { c in
+                    Button { Task { await holder.focus(c.id) } } label: {
+                        BorderedStickerImage(path: c.bodyPath ?? c.imagePath)
+                            .padding(10).frame(height: 116).frame(maxWidth: .infinity)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
+            .padding(.horizontal, 16).padding(.top, 16)
+            .padding(.bottom, deviceSafeAreaBottom + 96)
         }
-        .animation(.spring(response: 0.42, dampingFraction: 0.82), value: holder.focused != nil)
+        .scrollIndicators(.hidden)
+        .background(Color.black.ignoresSafeArea())
     }
 }
