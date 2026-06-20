@@ -35,8 +35,8 @@ struct MainContainerView: View {
             .scrollTargetBehavior(.paging)
             .defaultScrollAnchor(.center)   // 첫 진입을 가운데(jar)로
             .scrollPosition(id: $page)
-            // jar에선 스와이프 잠금(스티커 드래그 보호). 이동은 세그먼트 탭으로.
-            .scrollDisabled(page == .jar || holder.isGrabbing || capturing)
+            // jar·profile에선 스와이프 잠금(스티커/서클 드래그 보호). 이동은 세그먼트 탭으로.
+            .scrollDisabled(page == .jar || page == .profile || holder.isGrabbing || capturing)
             .scrollIndicators(.hidden)
             .ignoresSafeArea()
 
