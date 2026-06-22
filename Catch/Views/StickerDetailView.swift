@@ -55,8 +55,9 @@ struct StickerDetailView: View {
             VStack(spacing: 18) {
                 captionArea
                 stickerImage
-                actionRow
-                commentPreview
+                // 좋아요/댓글/그룹추가 버튼 보류(UX 개선 후 재도입).
+                // actionRow
+                // commentPreview
             }
             .padding(.horizontal, 24)
         }

@@ -1,13 +1,13 @@
 import SwiftUI
 
 enum CatchMode: String, CaseIterable {
-    case camera, jar, groups
+    case camera, jar   // groups (그룹 탭은 UX 개선 후 재도입 — 아래 주석 참고)
 
     var label: String {
         switch self {
         case .camera: return "camera"
         case .jar: return "jar"
-        case .groups: return "groups"
+        // case .groups: return "groups"
         }
     }
 
@@ -15,7 +15,7 @@ enum CatchMode: String, CaseIterable {
         switch self {
         case .camera: return "camera.fill"
         case .jar: return "face.smiling.inverse"   // 스티커 항아리 = 웃는 얼굴
-        case .groups: return "person.2.fill"       // 공유 그룹
+        // case .groups: return "person.2.fill"    // 공유 그룹(보류)
         }
     }
 }

@@ -26,17 +26,18 @@ struct MainContainerView: View {
                     pageView(.jar) {
                         HomeView(holder: holder).environmentObject(auth)
                     }
-                    pageView(.groups) {
-                        GroupsView().environmentObject(auth)
-                    }
+                    // 그룹 탭 보류(UX 개선 후 재도입). GroupsView 코드는 유지.
+                    // pageView(.groups) {
+                    //     GroupsView().environmentObject(auth)
+                    // }
                 }
                 .scrollTargetLayout()
             }
             .scrollTargetBehavior(.paging)
-            .defaultScrollAnchor(.center)   // 첫 진입을 가운데(jar)로
+            .defaultScrollAnchor(.trailing)   // 2탭(camera·jar) — 첫 진입을 jar(마지막)로
             .scrollPosition(id: $page)
-            // jar·profile에선 스와이프 잠금(스티커/서클 드래그 보호). 이동은 세그먼트 탭으로.
-            .scrollDisabled(page == .jar || page == .groups || holder.isGrabbing || capturing)
+            // jar에선 스와이프 잠금(스티커 드래그 보호). 이동은 세그먼트 탭으로.
+            .scrollDisabled(page == .jar || holder.isGrabbing || capturing)
             .scrollIndicators(.hidden)
             .ignoresSafeArea()
 
