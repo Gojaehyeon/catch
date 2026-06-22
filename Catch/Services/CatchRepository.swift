@@ -74,12 +74,12 @@ final class CatchRepository {
         try? encoded.full.write(to: cacheURL(imagePath))
         try? encoded.body.write(to: cacheURL(bodyPath))
 
-        let cloud = CloudCatch(id: id, ownerId: uid, folderId: nil,
+        // 로컬-퍼스트: 그룹에 넣기 전까진 업로드하지 않는다(혼자 모으는 건 전부 로컬).
+        let cloud = CloudCatch(id: id, ownerId: uid, folderId: nil, groupId: nil,
                                imagePath: imagePath, bodyPath: bodyPath, title: nil, isPublic: true)
         var local = loadLocal()
         local.append(LocalCatch(cloud: cloud, synced: false))
         saveLocal(local)
-        Task { await self.sync(cloud) }
         return cloud
     }
 
@@ -107,7 +107,8 @@ final class CatchRepository {
             }
             let payload = CatchInsert(id: c.id.uuidString.lowercased(),
                                       owner_id: c.ownerId.uuidString.lowercased(),
-                                      image_path: c.imagePath, body_path: c.bodyPath ?? "")
+                                      image_path: c.imagePath, body_path: c.bodyPath ?? "",
+                                      group_id: c.groupId?.uuidString.lowercased())
             // 충돌 시 DO NOTHING — 컬럼 제한 UPDATE 권한 불필요(INSERT만).
             try await Supa.client.from("catches").upsert(payload, onConflict: "id", ignoreDuplicates: true).execute()
             markSynced(c.id)
@@ -223,5 +224,35 @@ final class CatchRepository {
             l[i].cloud.folderId = folderId
             saveLocal(l)
         }
+    }
+
+    // MARK: - 그룹(공유 항아리)
+    private struct GroupAssign: Encodable { let group_id: String? }
+
+    /// 스티커를 그룹에 담는다 — 이때 비로소 서버 업로드(이미지+행, group_id 포함).
+    @discardableResult
+    func addToGroup(_ catchId: UUID, _ groupId: UUID) async -> Bool {
+        var l = loadLocal()
+        guard let i = l.firstIndex(where: { $0.cloud.id == catchId }) else { return false }
+        l[i].cloud.groupId = groupId
+        l[i].synced = false
+        saveLocal(l)
+        let ok = await sync(l[i].cloud)   // 신규면 group_id 포함해 insert
+        // 이미 서버에 있던 스티커면 group_id 갱신 보장.
+        _ = try? await Supa.client.from("catches")
+            .update(GroupAssign(group_id: groupId.uuidString.lowercased()))
+            .eq("id", value: catchId.uuidString).execute()
+        return ok
+    }
+
+    /// 스티커를 그룹에서 뺀다(로컬 보관은 유지, 서버 group_id 해제).
+    func removeFromGroup(_ catchId: UUID) async {
+        var l = loadLocal()
+        guard let i = l.firstIndex(where: { $0.cloud.id == catchId }) else { return }
+        l[i].cloud.groupId = nil
+        saveLocal(l)
+        _ = try? await Supa.client.from("catches")
+            .update(GroupAssign(group_id: nil))
+            .eq("id", value: catchId.uuidString).execute()
     }
 }

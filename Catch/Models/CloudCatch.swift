@@ -5,6 +5,7 @@ struct CloudCatch: Codable, Identifiable, Equatable {
     let id: UUID
     let ownerId: UUID
     var folderId: UUID?
+    var groupId: UUID?
     let imagePath: String
     let bodyPath: String?
     var title: String?
@@ -14,6 +15,7 @@ struct CloudCatch: Codable, Identifiable, Equatable {
         case id, title
         case ownerId = "owner_id"
         case folderId = "folder_id"
+        case groupId = "group_id"
         case imagePath = "image_path"
         case bodyPath = "body_path"
         case isPublic = "is_public"
@@ -26,4 +28,5 @@ struct CatchInsert: Encodable {
     let owner_id: String
     let image_path: String
     let body_path: String
+    var group_id: String?
 }

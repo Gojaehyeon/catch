@@ -26,8 +26,8 @@ struct MainContainerView: View {
                     pageView(.jar) {
                         HomeView(holder: holder).environmentObject(auth)
                     }
-                    pageView(.profile) {
-                        ProfilePageView().environmentObject(auth)
+                    pageView(.groups) {
+                        GroupsView().environmentObject(auth)
                     }
                 }
                 .scrollTargetLayout()
@@ -36,7 +36,7 @@ struct MainContainerView: View {
             .defaultScrollAnchor(.center)   // 첫 진입을 가운데(jar)로
             .scrollPosition(id: $page)
             // jar·profile에선 스와이프 잠금(스티커/서클 드래그 보호). 이동은 세그먼트 탭으로.
-            .scrollDisabled(page == .jar || page == .profile || holder.isGrabbing || capturing)
+            .scrollDisabled(page == .jar || page == .groups || holder.isGrabbing || capturing)
             .scrollIndicators(.hidden)
             .ignoresSafeArea()
 

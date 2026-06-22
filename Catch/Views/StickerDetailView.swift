@@ -21,6 +21,9 @@ struct StickerDetailView: View {
     @State private var preview: [Comment] = []   // 최근 댓글 미리보기
     @State private var showComments = false
     @State private var heartBurst = false   // 더블탭 좋아요 연출
+    @State private var myGroups: [CatchGroup] = []
+    @State private var showGroupPicker = false
+    @State private var groupToast: String?
 
     @FocusState private var captionFocused: Bool
 
@@ -73,6 +76,17 @@ struct StickerDetailView: View {
         .sheet(isPresented: $showComments, onDismiss: { Task { await loadComments() } }) {
             CommentsSheet(catchId: catchId, isOwner: isOwner) { commentCount = $0 }
         }
+        .overlay(alignment: .bottom) {
+            if let t = groupToast {
+                Text(t).font(.subheadline.bold()).foregroundStyle(.black)
+                    .padding(.horizontal, 18).padding(.vertical, 10)
+                    .background(Theme.lime, in: Capsule())
+                    .padding(.bottom, 70)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .task { try? await Task.sleep(nanoseconds: 1_600_000_000); withAnimation { groupToast = nil } }
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: groupToast != nil)
     }
 
     // MARK: - Caption bubble
@@ -169,6 +183,27 @@ struct StickerDetailView: View {
                 .padding(.vertical, 10).padding(.horizontal, 14)
                 .contentShape(Rectangle())
             }
+            if isOwner {
+                Button { Task { myGroups = await GroupRepository.shared.listMine(); showGroupPicker = true } } label: {
+                    Image(systemName: "tray.and.arrow.down.fill")
+                        .font(.system(size: 19)).foregroundStyle(.white)
+                        .padding(.vertical, 10).padding(.horizontal, 14)
+                        .contentShape(Rectangle())
+                }
+            }
+        }
+        .confirmationDialog("어느 그룹에 담을까요?", isPresented: $showGroupPicker, titleVisibility: .visible) {
+            ForEach(myGroups) { g in
+                Button(g.name) {
+                    Task {
+                        await CatchRepository.shared.addToGroup(catchId, g.id)
+                        groupToast = "\(g.name)에 담았어요"
+                    }
+                }
+            }
+            Button("취소", role: .cancel) {}
+        } message: {
+            Text(myGroups.isEmpty ? "먼저 그룹을 만들어 주세요." : "선택한 그룹의 공유 항아리에 추가돼요.")
         }
     }
 
