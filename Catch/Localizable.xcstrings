@@ -2,16 +2,7 @@
   "sourceLanguage" : "ko",
   "strings" : {
     "·" : {
-
-    },
-    "@" : {
-
-    },
-    "%@" : {
-
-    },
-    "%@  " : {
-
+      "shouldTranslate" : false
     },
     "%@으로 평생 잠금 해제" : {
       "extractionState" : "stale",
@@ -55,7 +46,7 @@
       }
     },
     "→ username" : {
-
+      "shouldTranslate" : false
     },
     "＋ 캡션 추가" : {
       "extractionState" : "stale",
@@ -98,9 +89,6 @@
         }
       }
     },
-    "+%@" : {
-
-    },
     "a-z, 0-9, _ · 2–20자" : {
       "localizations" : {
         "de" : {
@@ -142,10 +130,10 @@
       }
     },
     "catch" : {
-
+      "shouldTranslate" : false
     },
     "Catch Pro" : {
-
+      "shouldTranslate" : false
     },
     "Catch Pro 사용 중" : {
       "localizations" : {
@@ -432,7 +420,7 @@
       }
     },
     "CEO @tntlabs\nProject Manager @Savetokip" : {
-
+      "shouldTranslate" : false
     },
     "collect the world, sticker by sticker." : {
       "localizations" : {
@@ -475,16 +463,92 @@
       }
     },
     "Connect with Apple" : {
-
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect with Apple"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appleでサインイン"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通过 Apple 登录"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conéctate con Apple"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se connecter avec Apple"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Apple anmelden"
+          }
+        }
+      }
     },
     "Gojaehyun" : {
-
+      "shouldTranslate" : false
     },
     "having trouble signing in?" : {
-
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "having trouble signing in?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サインインできませんか？"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登录遇到问题？"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿problemas para iniciar sesión?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "un problème pour vous connecter ?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Probleme bei der Anmeldung?"
+          }
+        }
+      }
     },
     "username" : {
-
+      "shouldTranslate" : false
     },
     "가장 인기 · 매년 자동 갱신" : {
       "extractionState" : "stale",
@@ -1465,9 +1529,6 @@
           }
         }
       }
-    },
-    "댓글 %@개 모두 보기" : {
-
     },
     "댓글 %lld개 모두 보기" : {
       "extractionState" : "stale",
