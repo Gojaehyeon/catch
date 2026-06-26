@@ -2,8 +2,6 @@
 build/
 build-device/
 DerivedData/
-*.xcodeproj/
-*.xcworkspace/
 xcuserdata/
 *.xcuserstate
 
