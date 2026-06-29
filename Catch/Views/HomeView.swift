@@ -30,6 +30,7 @@ final class SceneHolder: ObservableObject {
     @Published var folders: [Folder] = []     // 내 폴더(루트에서 모양 노드로 표시)
     @Published var currentFolder: Folder?     // nil = 루트(미분류 + 폴더들)
     @Published var navToken = 0               // 폴더 진입/이탈마다 +1 → 뷰가 확장 전환 재생
+    @Published var navAnchor: UnitPoint = .center   // 확장 전환의 기준점(탭한 폴더 도형 위치)
     @Published var folderToEdit: Folder?      // 꾹 눌러 편집 / + 새 폴더 시트
     private(set) var creatingFolderId: UUID?  // folderToEdit가 새 폴더면 그 임시 id
 
@@ -83,8 +84,8 @@ final class SceneHolder: ObservableObject {
         scene.onTapCatch = { [weak self] id in
             Task { await self?.focus(id) }
         }
-        scene.onOpenFolder = { [weak self] id in
-            Task { await self?.enterFolder(id) }
+        scene.onOpenFolder = { [weak self] id, anchor in
+            Task { await self?.enterFolder(id, anchor: UnitPoint(x: anchor.x, y: anchor.y)) }
         }
         scene.onDropOnFolder = { [weak self] sid, fid in
             self?.dropSticker(sid, into: fid)
@@ -110,9 +111,10 @@ final class SceneHolder: ObservableObject {
 
     // MARK: - 폴더 네비게이션
 
-    func enterFolder(_ id: UUID) async {
+    func enterFolder(_ id: UUID, anchor: UnitPoint = .center) async {
         currentFolder = folders.first { $0.id == id }
         scene.ejectEnabled = true   // 폴더 안: 뒤로가기로 빼기 가능
+        navAnchor = anchor          // 탭한 폴더 도형 위치에서 확장
         navToken += 1               // 확장 전환 재생
         await reload(folderId: id)
     }
@@ -298,7 +300,7 @@ struct HomeView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .scaleEffect(enterScale)
+            .scaleEffect(enterScale, anchor: holder.navAnchor)
             .opacity(Double(min(1, max(0, (enterScale - 0.8) / 0.2))))
 
             topBar

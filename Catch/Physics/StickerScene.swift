@@ -13,8 +13,8 @@ final class StickerScene: SKScene {
     var onRequestDelete: ((UUID) -> Void)?
     /// 스티커를 가볍게 탭하면 해당 캐치 id를 알린다(호스트가 포커스 프리뷰).
     var onTapCatch: ((UUID) -> Void)?
-    /// 폴더 노드를 탭하면 해당 폴더 id를 알린다(호스트가 폴더 진입).
-    var onOpenFolder: ((UUID) -> Void)?
+    /// 폴더 노드를 탭하면 해당 폴더 id와 탭한 도형의 정규화 위치(0..1, 좌상단 기준)를 알린다(호스트가 폴더 진입 + 확장 기준점).
+    var onOpenFolder: ((UUID, CGPoint) -> Void)?
     /// 스티커를 폴더 위로 드롭하면 (스티커 id, 폴더 id)를 알린다(호스트가 폴더 배정).
     var onDropOnFolder: ((UUID, UUID) -> Void)?
     /// 폴더를 길게 누르면 해당 폴더 id를 알린다(호스트가 편집 시트).
@@ -577,7 +577,12 @@ final class StickerScene: SKScene {
         }
 
         if isTap {
-            if let fid = folderId(node) { onOpenFolder?(fid) }
+            if let fid = folderId(node) {
+                // 씬은 y-up·좌하단 원점 → SwiftUI 좌상단 기준(0=위)으로 뒤집어 정규화.
+                let ax = min(1, max(0, node.position.x / size.width))
+                let ay = min(1, max(0, 1 - node.position.y / size.height))
+                onOpenFolder?(fid, CGPoint(x: ax, y: ay))
+            }
             else if let id = catchId(node) { onTapCatch?(id) }
         }
     }
