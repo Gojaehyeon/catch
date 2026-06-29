@@ -43,6 +43,19 @@ enum FolderShape: CaseIterable {
 
     var index: Int { Self.allCases.firstIndex(of: self) ?? 0 }
 
+    /// 확장 전환에서 화면을 완전히 덮는 데 필요한 (대각선 거리 대비) 반경 배수.
+    /// 원/사각은 ~1, 오목한 별·삼각·하트는 패임이 화면 모서리를 덮으려면 더 커야 한다.
+    var coverFactor: CGFloat {
+        switch self {
+        case .circle:   return 1.05
+        case .square:   return 1.05
+        case .hexagon:  return 1.2
+        case .heart:    return 2.1
+        case .star:     return 2.3
+        case .triangle: return 2.6
+        }
+    }
+
     /// 베지어 패스 대신 SF Symbol로 그리는 모양(없으면 nil).
     var systemSymbol: String? {
         switch self {

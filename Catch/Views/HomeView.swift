@@ -31,6 +31,7 @@ final class SceneHolder: ObservableObject {
     @Published var currentFolder: Folder?     // nil = 루트(미분류 + 폴더들)
     @Published var navToken = 0               // 폴더 진입/이탈마다 +1 → 뷰가 확장 전환 재생
     @Published var navAnchor: UnitPoint = .center   // 확장 전환의 기준점(탭한 폴더 도형 위치)
+    @Published var navShape: FolderShape = .circle   // 확장 전환에 쓸 폴더 도형(원/사각/별…)
     @Published var folderToEdit: Folder?      // 꾹 눌러 편집 / + 새 폴더 시트
     private(set) var creatingFolderId: UUID?  // folderToEdit가 새 폴더면 그 임시 id
 
@@ -112,9 +113,11 @@ final class SceneHolder: ObservableObject {
     // MARK: - 폴더 네비게이션
 
     func enterFolder(_ id: UUID, anchor: UnitPoint = .center) async {
-        currentFolder = folders.first { $0.id == id }
+        let folder = folders.first { $0.id == id }
+        currentFolder = folder
         scene.ejectEnabled = true   // 폴더 안: 뒤로가기로 빼기 가능
         navAnchor = anchor          // 탭한 폴더 도형 위치에서 확장
+        if let folder { navShape = FolderShape.resolve(folder.shape, id: folder.id) }   // 폴더 모양대로 확장
         navToken += 1               // 확장 전환 재생
         await reload(folderId: id)
     }
@@ -281,11 +284,11 @@ struct HomeView: View {
     @EnvironmentObject private var pro: ProStore
     @ObservedObject var holder: SceneHolder
     @State private var showPaywall = false
-    @State private var enterScale: CGFloat = 1   // 폴더 진입/이탈 시 항아리가 확장되는 전환
+    @State private var reveal: CGFloat = 1   // 폴더 전환: 0=점 → 1=화면 가득(폴더 모양 마스크)
 
     var body: some View {
         ZStack(alignment: .top) {
-            // 폴더 전환 시 항아리(씬+그리드)가 작게 시작해 확 펼쳐지는 느낌.
+            // 폴더 전환 시 항아리(씬+그리드)가 폴더 모양대로 그 위치에서 펼쳐지는 느낌.
             ZStack {
                 SpriteView(scene: holder.scene, options: [.ignoresSiblingOrder])
                     .ignoresSafeArea()
@@ -300,17 +303,17 @@ struct HomeView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .scaleEffect(enterScale, anchor: holder.navAnchor)
-            .opacity(Double(min(1, max(0, (enterScale - 0.8) / 0.2))))
+            .clipShape(FolderRevealShape(shape: holder.navShape, anchor: holder.navAnchor, progress: reveal))
+            .opacity(Double(min(1, max(0, reveal * 2))))
 
             topBar
                 .padding(.top, deviceSafeAreaTop + 4)
         }
         .animation(.easeInOut(duration: 0.45), value: holder.isGrid)
-        // 폴더 진입/이탈마다 0.8 → 1로 스프링 확장(살짝 오버슈트).
+        // 폴더 진입/이탈마다 폴더 모양이 0 → 1로 천천히 펼쳐진다.
         .onChange(of: holder.navToken) { _, _ in
-            enterScale = 0.8
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.72)) { enterScale = 1 }
+            reveal = 0
+            withAnimation(.easeInOut(duration: 0.64)) { reveal = 1 }
         }
         .task {
             // 하단 커스텀 툴바(가운데 알약) 충돌 바디 설정 — 스티커가 바에 안 가려지게.
@@ -500,5 +503,33 @@ struct JarBackdrop: View {
             }
         }
         .ignoresSafeArea()
+    }
+}
+
+/// 폴더 진입 전환용 클립 모양 — 탭한 폴더 도형([shape])을 기준점([anchor])에서
+/// [progress](0=점 → 1=화면 가득)만큼 키운 외곽선. 그 모양대로 콘텐츠가 펼쳐져 보인다.
+struct FolderRevealShape: Shape {
+    let shape: FolderShape
+    let anchor: UnitPoint
+    var progress: CGFloat
+
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let cx = anchor.x * rect.width
+        let cy = anchor.y * rect.height
+        // 기준점에서 가장 먼 화면 모서리까지의 거리 → 그만큼 키우면 화면을 덮는다(모양별 배수 보정).
+        let corner = max(
+            hypot(cx, cy),
+            hypot(rect.width - cx, cy),
+            hypot(cx, rect.height - cy),
+            hypot(rect.width - cx, rect.height - cy)
+        )
+        let half = max(1, corner * shape.coverFactor * progress)
+        let box = CGRect(x: cx - half, y: cy - half, width: half * 2, height: half * 2)
+        return Path(shape.path(in: box).cgPath)
     }
 }
