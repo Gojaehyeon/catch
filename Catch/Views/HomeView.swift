@@ -33,7 +33,6 @@ final class SceneHolder: ObservableObject {
     @Published var navAnchor: UnitPoint = .center   // 확장 전환의 기준점(탭한 폴더 도형 위치)
     @Published var navShape: FolderShape = .circle   // 확장 전환에 쓸 폴더 도형(원/사각/별…)
     @Published var navColor: Color = .white           // 확장 전환 '뚜껑' 색(폴더 채움색)
-    @Published var navCollapsing = false              // 뒤로가기(true)면 축소, 진입(false)이면 확장
     @Published var folderToEdit: Folder?      // 꾹 눌러 편집 / + 새 폴더 시트
     private(set) var creatingFolderId: UUID?  // folderToEdit가 새 폴더면 그 임시 id
 
@@ -122,7 +121,6 @@ final class SceneHolder: ObservableObject {
             navShape = FolderShape.resolve(folder.shape, id: folder.id)  // 폴더 모양대로
             navColor = FolderPalette.color(folder.color)             // 폴더 색으로
         }
-        navCollapsing = false       // 진입 = 확장
         currentFolder = folder
         navToken += 1               // 뚜껑(폴더색) 확장 시작 — 옛 화면은 아직 그대로
         try? await Task.sleep(nanoseconds: Self.revealCoverNanos)   // 뚜껑이 덮을 때까지 기다렸다가
@@ -132,11 +130,8 @@ final class SceneHolder: ObservableObject {
     func exitToRoot() async {
         scene.ejectEnabled = false
         ejectHovering = false
-        navCollapsing = true        // 뒤로가기 = 일반 페이드 전환(도형 축소 아님). FolderRevealLid가 내용을 페이드.
         currentFolder = nil
-        navToken += 1
-        try? await Task.sleep(nanoseconds: Self.revealCoverNanos)
-        await reload(folderId: nil)
+        await reload(folderId: nil)   // 폴더 나가기는 전환효과 없이 즉시 루트 교체(navToken을 올리지 않음).
     }
 
     /// 뚜껑이 화면을 덮는 데 걸리는 시간 — HomeView 전환의 '덮기 단계'와 맞춘다.
@@ -330,7 +325,6 @@ struct HomeView: View {
             // Animatable 모디파이어라 매 프레임 body가 불려, 덮기/페이드 단계 계산이 정확히 적용된다.
             .modifier(FolderRevealLid(
                 shape: holder.navShape, anchor: holder.navAnchor, color: holder.navColor,
-                collapsing: holder.navCollapsing,
                 t: reveal, coverFrac: revealCoverFrac, fadeStart: revealFadeStart))
 
             topBar
@@ -572,7 +566,6 @@ private struct FolderRevealLid: ViewModifier, Animatable {
     let shape: FolderShape
     let anchor: UnitPoint
     let color: Color
-    let collapsing: Bool
     var t: CGFloat
     let coverFrac: CGFloat
     let fadeStart: CGFloat
@@ -583,20 +576,13 @@ private struct FolderRevealLid: ViewModifier, Animatable {
     }
 
     func body(content: Content) -> some View {
-        // 확장(진입): 폴더 점에서 자라 덮은 뒤(coverFrac) 페이드아웃하며 새 화면을 드러냄.
+        // 폴더 진입(확장): 폴더 점에서 자라 덮은 뒤(coverFrac) 페이드아웃하며 새 화면을 드러냄.
+        // 폴더 나가기는 전환효과 없이 즉시 교체(navToken을 올리지 않아 이 모디파이어가 동작 안 함).
         let coverP = min(1, t / coverFrac)
         let lidAlpha = t < fadeStart ? 1 : Double(max(0, 1 - (t - fadeStart) / (1 - fadeStart)))
-        // 축소(뒤로가기) → 슬라이드 전환(pop): 현재 내용이 오른쪽으로 밀려나가고(0→+W),
-        // 뒤에서 교체된 뒤 새 내용이 왼쪽에서 밀려들어온다(-W→0).
-        let w = UIScreen.main.bounds.width
-        let slideX: CGFloat =
-            (collapsing && t < 0.999)
-            ? (t < coverFrac ? (t / coverFrac) * w : -w + ((t - coverFrac) / (1 - coverFrac)) * w)
-            : 0
         return content
-            .offset(x: slideX)
             .overlay {
-                if !collapsing && t < 0.999 {
+                if t < 0.999 {
                     FolderRevealShape(shape: shape, anchor: anchor, progress: coverP)
                         .fill(color)
                         .opacity(lidAlpha)
